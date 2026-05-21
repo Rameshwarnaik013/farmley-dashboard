@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body { @apply bg-gray-50 text-gray-800 text-sm; }
+}
+
+@layer components {
+  .ach-dark-red { @apply bg-[#c00000] text-white font-bold; }
+  .ach-red { @apply bg-[#ff0000] text-white font-bold; }
+  .ach-orange { @apply bg-[#ffc000] text-gray-800 font-bold; }
+  .ach-light-green { @apply bg-[#92d050] text-gray-800 font-bold; }
+  .ach-dark-green { @apply bg-[#00b050] text-white font-bold; }
+  .ach-grey { @apply bg-[#d9d9d9] text-gray-500 font-bold; }
+}
+
+.scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: #f1f1f1; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
