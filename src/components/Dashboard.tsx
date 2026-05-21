@@ -303,7 +303,8 @@ function InstructionsPanel({ cfg }: { cfg: DashData['config'] }) {
 
 function AchAbove100Table({ rows }: { rows: Row[] }) {
   const [expanded, setExpanded] = useState(false);
-  const [sortCol, setSortCol] = useState<'achKg' | 'soVsProj' | 'diffKg' | null>('achKg');
+  type SortKey = 'projKg' | 'soKg' | 'achKg' | 'soVsProj' | 'diffKg';
+  const [sortCol, setSortCol] = useState<SortKey | null>('achKg');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   const sorted = useMemo(() => {
@@ -315,7 +316,7 @@ function AchAbove100Table({ rows }: { rows: Row[] }) {
     });
   }, [rows, sortCol, sortDir]);
 
-  const toggleSort = (col: 'achKg' | 'soVsProj' | 'diffKg') => {
+  const toggleSort = (col: SortKey) => {
     if (sortCol === col) setSortDir(d => d === 'desc' ? 'asc' : 'desc');
     else { setSortCol(col); setSortDir('desc'); }
   };
@@ -355,8 +356,12 @@ function AchAbove100Table({ rows }: { rows: Row[] }) {
               <th className="bg-gray-700 text-white px-2 py-2 text-left">Origin</th>
               <th className="bg-gray-700 text-white px-2 py-2 text-left">Item Code</th>
               <th className="bg-gray-700 text-white px-2 py-2 text-left">Item Name</th>
-              <th className="bg-gray-700 text-white px-2 py-2 text-right">Proj KGs</th>
-              <th className="bg-gray-700 text-white px-2 py-2 text-right">SO KGs</th>
+              <th className="bg-gray-700 text-white px-2 py-2 text-right cursor-pointer hover:bg-gray-600 select-none whitespace-nowrap" onClick={() => toggleSort('projKg')}>
+                Proj KGs{sIcon('projKg')}
+              </th>
+              <th className="bg-gray-700 text-white px-2 py-2 text-right cursor-pointer hover:bg-gray-600 select-none whitespace-nowrap" onClick={() => toggleSort('soKg')}>
+                SO KGs{sIcon('soKg')}
+              </th>
               <th className="bg-gray-700 text-white px-2 py-2 text-right">Exp KGs</th>
               <th className="bg-gray-700 text-white px-2 py-2 text-center cursor-pointer hover:bg-gray-600 select-none whitespace-nowrap" onClick={() => toggleSort('achKg')}>
                 MTD Ach%{sIcon('achKg')}

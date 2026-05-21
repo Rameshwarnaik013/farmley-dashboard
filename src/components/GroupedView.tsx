@@ -3,7 +3,7 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { Row, achClass, fmt, fmtPct } from '@/lib/helpers';
 
 type GroupKey = 'itemGroup' | 'newMIS' | 'custGroup' | 'origin' | 'itemName' | 'customer';
-type SortCol = 'projKg' | 'projUnits' | null;
+type SortCol = 'projKg' | 'soKg' | 'projUnits' | null;
 type SortDir = 'asc' | 'desc';
 
 interface Props {
@@ -189,7 +189,9 @@ export default function GroupedView({ rows, groupBy, subGroupBy, daysElapsed }: 
               <th className="bg-gray-700 text-white px-2 py-2 text-right cursor-pointer hover:bg-gray-600 select-none whitespace-nowrap" onClick={() => toggleSort('projKg')}>
                 Proj KGs{sortIcon('projKg')}
               </th>
-              <th className="bg-gray-700 text-white px-2 py-2 text-right">SO KGs</th>
+              <th className="bg-gray-700 text-white px-2 py-2 text-right cursor-pointer hover:bg-gray-600 select-none whitespace-nowrap" onClick={() => toggleSort('soKg')}>
+                SO KGs{sortIcon('soKg')}
+              </th>
               <th className="bg-gray-700 text-white px-2 py-2 text-right cursor-pointer hover:bg-gray-600 select-none whitespace-nowrap" onClick={() => toggleSort('projUnits')}>
                 Proj Units{sortIcon('projUnits')}
               </th>
