@@ -301,6 +301,111 @@ function InstructionsPanel({ cfg }: { cfg: DashData['config'] }) {
   );
 }
 
+function AchAbove100Table({ rows }: { rows: Row[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const [sortCol, setSortCol] = useState<'achKg' | 'soVsProj' | 'diffKg' | null>('achKg');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  const sorted = useMemo(() => {
+    if (!sortCol) return rows;
+    return [...rows].sort((a, b) => {
+      const va = a[sortCol] as number;
+      const vb = b[sortCol] as number;
+      return sortDir === 'desc' ? vb - va : va - vb;
+    });
+  }, [rows, sortCol, sortDir]);
+
+  const toggleSort = (col: 'achKg' | 'soVsProj' | 'diffKg') => {
+    if (sortCol === col) setSortDir(d => d === 'desc' ? 'asc' : 'desc');
+    else { setSortCol(col); setSortDir('desc'); }
+  };
+  const sIcon = (col: string) => sortCol === col ? (sortDir === 'desc' ? ' ▼' : ' ▲') : ' ⇅';
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <h3 className="text-sm font-bold text-brand-900">
+          MTD Ach% &gt; 100% — {rows.length} items
+        </h3>
+        <button
+          onClick={() => setExpanded(e => !e)}
+          className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg border shadow-sm transition-all ${
+            expanded
+              ? 'bg-brand-900 text-white border-brand-900 hover:bg-brand-800'
+              : 'bg-white text-brand-900 border-brand-300 hover:bg-brand-50'
+          }`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {expanded
+              ? <><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></>
+              : <><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></>
+            }
+          </svg>
+          {expanded ? 'Compact View' : 'Full View (Screenshot)'}
+        </button>
+      </div>
+
+      <div className={`bg-white rounded-lg shadow-sm overflow-auto scrollbar-thin ${expanded ? '' : 'max-h-[calc(100vh-340px)]'}`}>
+        <table className="w-full text-[11px]">
+          <thead className="sticky top-0 z-10">
+            <tr>
+              <th className="bg-gray-700 text-white px-2 py-2 text-center w-8">#</th>
+              <th className="bg-gray-700 text-white px-2 py-2 text-left">Cust Group</th>
+              <th className="bg-gray-700 text-white px-2 py-2 text-left">Customer</th>
+              <th className="bg-gray-700 text-white px-2 py-2 text-left">Origin</th>
+              <th className="bg-gray-700 text-white px-2 py-2 text-left">Item Code</th>
+              <th className="bg-gray-700 text-white px-2 py-2 text-left">Item Name</th>
+              <th className="bg-gray-700 text-white px-2 py-2 text-right">Proj KGs</th>
+              <th className="bg-gray-700 text-white px-2 py-2 text-right">SO KGs</th>
+              <th className="bg-gray-700 text-white px-2 py-2 text-right">Exp KGs</th>
+              <th className="bg-gray-700 text-white px-2 py-2 text-center cursor-pointer hover:bg-gray-600 select-none whitespace-nowrap" onClick={() => toggleSort('achKg')}>
+                MTD Ach%{sIcon('achKg')}
+              </th>
+              <th className="bg-gray-700 text-white px-2 py-2 text-center cursor-pointer hover:bg-gray-600 select-none whitespace-nowrap" onClick={() => toggleSort('soVsProj')}>
+                SO vs Proj%{sIcon('soVsProj')}
+              </th>
+              <th className="bg-gray-700 text-white px-2 py-2 text-right cursor-pointer hover:bg-gray-600 select-none whitespace-nowrap" onClick={() => toggleSort('diffKg')}>
+                Diff KGs{sIcon('diffKg')}
+              </th>
+              <th className="bg-gray-700 text-white px-2 py-2 text-right">RunRate KGs</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((r, i) => (
+              <tr key={`${r.itemCode}-${r.customer}-${r.origin}-${i}`} className="border-b border-gray-100 hover:bg-blue-50/40 even:bg-gray-50/50">
+                <td className="px-2 py-1.5 text-center font-bold text-gray-400">{i + 1}</td>
+                <td className="px-2 py-1.5">{r.custGroup}</td>
+                <td className="px-2 py-1.5 max-w-[140px] truncate">{r.customer}</td>
+                <td className="px-2 py-1.5">{r.origin}</td>
+                <td className="px-2 py-1.5 font-medium">{r.itemCode}</td>
+                <td className="px-2 py-1.5 max-w-[200px] truncate">{r.itemName}</td>
+                <td className="px-2 py-1.5 text-right">{fmt(r.projKg)}</td>
+                <td className="px-2 py-1.5 text-right">{fmt(r.soKg)}</td>
+                <td className="px-2 py-1.5 text-right">{fmt(r.expKg)}</td>
+                <td className="px-2 py-1.5 text-center">
+                  <span className={`px-2 py-0.5 rounded text-xs font-semibold ${r.achKg > 120 ? 'bg-[#c00000] text-white' : 'bg-[#ff0000] text-white'}`}>
+                    {r.achKg.toFixed(1)}%
+                  </span>
+                </td>
+                <td className="px-2 py-1.5 text-center">{r.projKg > 0 ? r.soVsProj.toFixed(1) + '%' : '-'}</td>
+                <td className={`px-2 py-1.5 text-right font-semibold ${r.diffKg < 0 ? 'text-red-700' : 'text-green-700'}`}>{fmt(r.diffKg)}</td>
+                <td className="px-2 py-1.5 text-right">{fmt(r.runRateKg)}</td>
+              </tr>
+            ))}
+            {sorted.length === 0 && (
+              <tr><td colSpan={13} className="text-center py-8 text-gray-400">No items with MTD Ach% &gt; 100%</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-2 text-[10px] text-gray-400">
+        {expanded ? '📸 Full view — all rows visible for screenshot' : `${rows.length} rows | Scroll to view all`}
+      </div>
+    </div>
+  );
+}
+
 function DataAudit({ data, filtered }: { data: DashData; filtered: Row[] }) {
   const [auditSearch, setAuditSearch] = useState('');
   const debouncedAudit = useMemo(() => auditSearch.toLowerCase(), [auditSearch]);
@@ -540,12 +645,7 @@ export default function Dashboard({ data, onReUpload }: DashboardProps) {
         )}
 
         {/* Tab Content */}
-        {tab === 'ach-above-100' && (
-          <div>
-            <h3 className="text-sm font-bold text-brand-900 mb-2">Items with MTD Ach% &gt; 100% ({filtered.filter(r => r.achKg > 100).length} items)</h3>
-            <DataTable data={filtered.filter(r => r.achKg > 100)} />
-          </div>
-        )}
+        {tab === 'ach-above-100' && <AchAbove100Table rows={filtered.filter(r => r.achKg > 100)} />}
         {tab === 'instructions' && <InstructionsPanel cfg={cfg} />}
         {tab === 'dashboard' && <DataTable data={filtered} />}
         {tab === 'cfa-items' && <GroupedView rows={filtered.filter(r => CFA_ITEM_NAMES.has(r.itemName))} groupBy="itemName" subGroupBy="customer" daysElapsed={cfg.daysElapsed} />}
