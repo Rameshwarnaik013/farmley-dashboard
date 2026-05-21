@@ -47,6 +47,7 @@ const columns = [
 
 export default function DataTable({ data, pageSize = 50 }: { data: Row[]; pageSize?: number }) {
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [fullView, setFullView] = useState(false);
 
   const table = useReactTable({
     data,
@@ -61,7 +62,23 @@ export default function DataTable({ data, pageSize = 50 }: { data: Row[]; pageSi
 
   return (
     <div>
-      <div className="overflow-auto max-h-[calc(100vh-340px)] scrollbar-thin rounded-lg shadow-sm bg-white">
+      <div className="flex justify-end mb-2">
+        <button
+          onClick={() => setFullView(v => !v)}
+          className={`flex items-center gap-1.5 text-[10px] px-3 py-1.5 border rounded-md shadow-sm transition-all ${
+            fullView ? 'bg-brand-900 text-white border-brand-900 hover:bg-brand-800' : 'bg-white hover:bg-gray-100'
+          }`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {fullView
+              ? <><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></>
+              : <><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></>
+            }
+          </svg>
+          {fullView ? 'Compact' : 'Full View'}
+        </button>
+      </div>
+      <div className={`overflow-auto scrollbar-thin rounded-lg shadow-sm bg-white ${fullView ? '' : 'max-h-[calc(100vh-340px)]'}`}>
         <table className="w-full text-[11px]">
           <thead className="sticky top-0 z-10">
             {table.getHeaderGroups().map(hg => (

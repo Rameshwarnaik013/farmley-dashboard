@@ -3,7 +3,7 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { Row, achClass, fmt, fmtPct } from '@/lib/helpers';
 
 type GroupKey = 'itemGroup' | 'newMIS' | 'custGroup' | 'origin' | 'itemName' | 'customer';
-type SortCol = 'projKg' | 'soKg' | 'projUnits' | null;
+type SortCol = 'projKg' | 'soKg' | 'projUnits' | 'achKg' | null;
 type SortDir = 'asc' | 'desc';
 
 interface Props {
@@ -48,6 +48,7 @@ function aggregate(rows: Row[], daysElapsed: number): AggResult {
 export default function GroupedView({ rows, groupBy, subGroupBy, daysElapsed }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [expandedSub, setExpandedSub] = useState<Set<string>>(new Set());
+  const [fullView, setFullView] = useState(false);
   const [groupSearch, setGroupSearch] = useState('');
   const [debouncedGS, setDebouncedGS] = useState('');
   const [sortCol, setSortCol] = useState<SortCol>(null);
@@ -176,10 +177,24 @@ export default function GroupedView({ rows, groupBy, subGroupBy, daysElapsed }: 
         <div className="flex gap-1">
           <button onClick={expandAll} className="text-[10px] px-3 py-1.5 border rounded-md hover:bg-gray-100 bg-white shadow-sm">Expand All</button>
           <button onClick={collapseAll} className="text-[10px] px-3 py-1.5 border rounded-md hover:bg-gray-100 bg-white shadow-sm">Collapse All</button>
+          <button
+            onClick={() => setFullView(v => !v)}
+            className={`flex items-center gap-1.5 text-[10px] px-3 py-1.5 border rounded-md shadow-sm transition-all ${
+              fullView ? 'bg-brand-900 text-white border-brand-900 hover:bg-brand-800' : 'bg-white hover:bg-gray-100'
+            }`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {fullView
+                ? <><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></>
+                : <><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></>
+              }
+            </svg>
+            {fullView ? 'Compact' : 'Full View'}
+          </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm overflow-auto max-h-[calc(100vh-340px)] scrollbar-thin">
+      <div className={`bg-white rounded-lg shadow-sm overflow-auto scrollbar-thin ${fullView ? '' : 'max-h-[calc(100vh-340px)]'}`}>
         <table className="w-full text-[11px]">
           <thead className="sticky top-0 z-10">
             <tr>
@@ -197,7 +212,9 @@ export default function GroupedView({ rows, groupBy, subGroupBy, daysElapsed }: 
               </th>
               <th className="bg-gray-700 text-white px-2 py-2 text-right">Exp SO Units</th>
               <th className="bg-gray-700 text-white px-2 py-2 text-right">Exp KGs</th>
-              <th className="bg-gray-700 text-white px-2 py-2 text-center whitespace-nowrap">MTD Ach%</th>
+              <th className="bg-gray-700 text-white px-2 py-2 text-center cursor-pointer hover:bg-gray-600 select-none whitespace-nowrap" onClick={() => toggleSort('achKg')}>
+                MTD Ach%{sortIcon('achKg')}
+              </th>
               <th className="bg-gray-700 text-white px-2 py-2 text-center whitespace-nowrap">SO vs Proj%</th>
               <th className="bg-gray-700 text-white px-2 py-2 text-right">Diff KGs</th>
               <th className="bg-gray-700 text-white px-2 py-2 text-right">Diff Units</th>
