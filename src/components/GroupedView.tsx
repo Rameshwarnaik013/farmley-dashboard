@@ -16,7 +16,7 @@ interface GroupAgg {
   soKg: number; soUnits: number; achKg: number; achUnits: number;
   diffKg: number; diffUnits: number; count: number;
   children: Row[];
-  subGroups?: { name: string; rows: Row[]; agg: Omit<GroupAgg, 'children' | 'subGroups'> }[];
+  subGroups?: { name: string; rows: Row[]; agg: Omit<GroupAgg, 'name' | 'children' | 'subGroups'> }[];
 }
 
 function aggregate(rows: Row[]) {

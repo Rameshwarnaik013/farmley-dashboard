@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/processData.mjs && next build",
+    "build": "next build",
+    "build:local": "node scripts/processData.mjs && next build",
     "start": "next start",
     "process-data": "node scripts/processData.mjs"
   },

@@ -3,11 +3,14 @@ import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
 export async function GET() {
-  // Try the generated Excel file
-  const filePath = join(process.env.USERPROFILE || 'C:\\Users\\Admin', 'Downloads', 'RunRate_Final_Dashboard.xlsx');
+  // Try public folder first (works on Vercel), then local Downloads (dev fallback)
+  const publicPath = join(process.cwd(), 'public', 'RunRate_Final_Dashboard.xlsx');
+  const localPath = join(process.env.USERPROFILE || process.env.HOME || '', 'Downloads', 'RunRate_Final_Dashboard.xlsx');
+
+  const filePath = existsSync(publicPath) ? publicPath : localPath;
 
   if (!existsSync(filePath)) {
-    return NextResponse.json({ error: 'Excel file not found. Run the generation script first.' }, { status: 404 });
+    return NextResponse.json({ error: 'Excel file not found.' }, { status: 404 });
   }
 
   const fileBuffer = readFileSync(filePath);

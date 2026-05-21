@@ -8,11 +8,10 @@ import GroupedView from './GroupedView';
 import Leaderboard from './Leaderboard';
 import SummaryChart from './SummaryChart';
 
-type Tab = 'dashboard' | 'item-group' | 'new-mis' | 'cust-group' | 'origin' | 'item-name' | 'top-kg' | 'top-unit' | 'bot-kg' | 'bot-unit' | 'summary-ig' | 'summary-origin' | 'zero-so' | 'unproj';
+type Tab = 'dashboard' | 'new-mis' | 'cust-group' | 'origin' | 'item-name' | 'top-kg' | 'top-unit' | 'bot-kg' | 'bot-unit' | 'summary-ig' | 'summary-origin' | 'zero-so' | 'unproj';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'dashboard', label: 'Dashboard' },
-  { id: 'item-group', label: 'By Item Group' },
   { id: 'new-mis', label: 'By New MIS' },
   { id: 'cust-group', label: 'By Customer Group' },
   { id: 'origin', label: 'By Origin' },
@@ -126,7 +125,7 @@ export default function Dashboard() {
 
       <div className="p-4 max-w-[1920px] mx-auto">
         {/* Filters */}
-        {['dashboard', 'item-group', 'new-mis', 'cust-group', 'origin', 'item-name', 'zero-so', 'unproj'].includes(tab) && (
+        {['dashboard', 'new-mis', 'cust-group', 'origin', 'item-name', 'zero-so', 'unproj'].includes(tab) && (
           <div className="bg-white rounded-lg shadow-sm p-4 mb-4 flex gap-4 flex-wrap">
             <FilterBar label="Customer Group" options={data.filters.custGroups} selected={cgFilter} onChange={setCgFilter} />
             <FilterBar label="Origin" options={data.filters.origins} selected={originFilter} onChange={setOriginFilter} />
@@ -135,7 +134,7 @@ export default function Dashboard() {
         )}
 
         {/* Legend + Search */}
-        {['dashboard', 'item-group', 'new-mis', 'cust-group', 'origin', 'item-name'].includes(tab) && (
+        {['dashboard', 'new-mis', 'cust-group', 'origin', 'item-name'].includes(tab) && (
           <>
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <div className="flex gap-2 flex-wrap text-[10px]">
@@ -159,7 +158,6 @@ export default function Dashboard() {
 
         {/* Tab Content */}
         {tab === 'dashboard' && <DataTable data={filtered} />}
-        {tab === 'item-group' && <GroupedView rows={filtered} groupBy="itemGroup" />}
         {tab === 'new-mis' && <GroupedView rows={filtered} groupBy="newMIS" />}
         {tab === 'cust-group' && <GroupedView rows={filtered} groupBy="custGroup" subGroupBy="customer" />}
         {tab === 'origin' && <GroupedView rows={filtered} groupBy="origin" />}
