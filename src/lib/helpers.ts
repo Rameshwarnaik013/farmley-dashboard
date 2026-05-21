@@ -34,6 +34,12 @@ export interface Summary {
   diffKg: number; diffUnits: number; count: number;
 }
 
+export interface CleaningRuleStat {
+  rule: string;
+  removedRows: number;
+  removedKg: number;
+}
+
 export interface DashData {
   config: {
     daysInMonth: number; dateFrom: string; dateTo: string; daysElapsed: number;
@@ -44,6 +50,7 @@ export interface DashData {
     custGroups: string[]; origins: string[]; itemGroups: string[];
     customers: string[]; newMIS: string[];
   };
+  cleaningStats: CleaningRuleStat[];
   rows: Row[];
   summaryIG: Summary[]; summaryOrigin: Summary[];
   summaryCG: Summary[]; summaryMIS: Summary[];

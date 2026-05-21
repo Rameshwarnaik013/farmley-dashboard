@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { DashData, Row, Summary } from './helpers';
+import { DashData, Row, Summary, CleaningRuleStat } from './helpers';
 
 const VALID_IT = ['ashish.k@farmley.com', 'abhishek.ku@farmley.com'];
 
@@ -24,19 +24,39 @@ function joinKey(cg: string, cust: string, origin: string, ic: string): string {
 
 interface RawRow { [key: string]: unknown; }
 
-function cleanSO(rows: RawRow[]): RawRow[] {
-  return rows.filter(r => {
-    if (str(r['Sales Order Created By']) === 'Administrator') return false;
-    if (str(r['Workflow State']) === 'Internal Transfer' && !VALID_IT.includes(str(r['Sales Order Created By']))) return false;
-    if (['On Hold', 'Rejected', 'Cancelled'].includes(str(r['Workflow State']))) return false;
-    if (str(r['Purpose']) === 'Documentation') return false;
-    if (['Cancelled', 'On Hold', 'Rejected'].includes(str(r['Sales Order Status']))) return false;
-    if (str(r['Sales Order Status']) === 'Internal Transfer' && !VALID_IT.includes(str(r['Sales Order Created By']))) return false;
-    if (str(r['Customer']).startsWith('Sample Order')) return false;
-    if (str(r['Item Type']) === 'Bulk') return false;
-    if ((Number(r['Returned Qty']) || 0) > 1) return false;
+interface CleanResult { cleaned: RawRow[]; stats: CleaningRuleStat[]; }
+
+function cleanSO(rows: RawRow[]): CleanResult {
+  const rules: { name: string; test: (r: RawRow) => boolean }[] = [
+    { name: 'Created By Administrator', test: r => str(r['Sales Order Created By']) === 'Administrator' },
+    { name: 'WF State: Internal Transfer (invalid creator)', test: r => str(r['Workflow State']) === 'Internal Transfer' && !VALID_IT.includes(str(r['Sales Order Created By'])) },
+    { name: 'WF State: On Hold / Rejected / Cancelled', test: r => ['On Hold', 'Rejected', 'Cancelled'].includes(str(r['Workflow State'])) },
+    { name: 'Purpose: Documentation', test: r => str(r['Purpose']) === 'Documentation' },
+    { name: 'SO Status: Cancelled / On Hold / Rejected', test: r => ['Cancelled', 'On Hold', 'Rejected'].includes(str(r['Sales Order Status'])) },
+    { name: 'SO Status: Internal Transfer (invalid creator)', test: r => str(r['Sales Order Status']) === 'Internal Transfer' && !VALID_IT.includes(str(r['Sales Order Created By'])) },
+    { name: 'Customer starts with Sample Order', test: r => str(r['Customer']).startsWith('Sample Order') },
+    { name: 'Item Type: Bulk', test: r => str(r['Item Type']) === 'Bulk' },
+    { name: 'Returned Qty > 1', test: r => (Number(r['Returned Qty']) || 0) > 1 },
+  ];
+
+  const stats: CleaningRuleStat[] = rules.map(r => ({ rule: r.name, removedRows: 0, removedKg: 0 }));
+
+  const cleaned = rows.filter(r => {
+    const kg = Number(r['Stock Qty']) || 0;
+    for (let i = 0; i < rules.length; i++) {
+      if (rules[i].test(r)) {
+        stats[i].removedRows++;
+        stats[i].removedKg += kg;
+        return false;
+      }
+    }
     return true;
   });
+
+  // Round stats
+  stats.forEach(s => { s.removedKg = Math.round(s.removedKg * 100) / 100; });
+
+  return { cleaned, stats: stats.filter(s => s.removedRows > 0) };
 }
 
 export function aggGroup(rows: Row[], groupKey: keyof Row): Summary[] {
@@ -78,7 +98,9 @@ export function processExcelFiles(projBuffer: ArrayBuffer, soBuffer: ArrayBuffer
   const soRawCount = soRaw.length;
 
   // Clean SO
-  soRaw = cleanSO(soRaw);
+  const cleanResult = cleanSO(soRaw);
+  soRaw = cleanResult.cleaned;
+  const cleaningStats = cleanResult.stats;
 
   // ─── Customer Group Remapping ───
   // Projection: Category A + Jhabak Marketing → Modern Trade
@@ -264,6 +286,7 @@ export function processExcelFiles(projBuffer: ArrayBuffer, soBuffer: ArrayBuffer
       customers: unique(rows, 'customer'),
       newMIS: unique(rows, 'newMIS'),
     },
+    cleaningStats,
     rows,
     summaryIG, summaryOrigin, summaryCG, summaryMIS,
     top20Kg, top20Units, bot20Kg, bot20Units,

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useMemo, useCallback, useRef } from 'react';
-import { DashData, Row } from '@/lib/helpers';
+import { DashData, Row, fmt } from '@/lib/helpers';
 import { exportDashboardExcel } from '@/lib/exportExcel';
 import { aggGroup } from '@/lib/processData';
 import StatsCards from './StatsCards';
@@ -10,7 +10,7 @@ import GroupedView from './GroupedView';
 import Leaderboard from './Leaderboard';
 import SummaryChart from './SummaryChart';
 
-type Tab = 'dashboard' | 'cfa-items' | 'new-mis' | 'cust-group' | 'origin' | 'item-name' | 'top-kg' | 'top-unit' | 'bot-kg' | 'bot-unit' | 'summary-ig' | 'summary-origin' | 'zero-so' | 'unproj';
+type Tab = 'dashboard' | 'cfa-items' | 'new-mis' | 'cust-group' | 'origin' | 'item-name' | 'top-kg' | 'top-unit' | 'bot-kg' | 'bot-unit' | 'summary-ig' | 'summary-origin' | 'zero-so' | 'unproj' | 'data-audit';
 
 const CFA_ITEM_NAMES = new Set([
   'Apple Pie Date Bite Farmley sachet 20 g - Single serve',
@@ -86,11 +86,122 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'summary-origin', label: 'Summary: Origin' },
   { id: 'zero-so', label: 'Zero SO' },
   { id: 'unproj', label: 'Unprojected SO' },
+  { id: 'data-audit', label: 'Data Audit' },
 ];
 
 interface DashboardProps {
   data: DashData;
   onReUpload: () => void;
+}
+
+function DataAudit({ data, filtered }: { data: DashData; filtered: Row[] }) {
+  const [auditSearch, setAuditSearch] = useState('');
+  const debouncedAudit = useMemo(() => auditSearch.toLowerCase(), [auditSearch]);
+
+  // Unfiltered per-item audit: sum SO KGs across ALL customer groups (no filter applied)
+  const allItemAudit = useMemo(() => {
+    const map: Record<string, { itemName: string; itemCode: string; allKg: number; filteredKg: number; interCoKg: number; allRows: number; filteredRows: number }> = {};
+    // ALL rows (unfiltered)
+    data.rows.forEach(r => {
+      const key = r.itemName || r.itemCode;
+      if (!map[key]) map[key] = { itemName: r.itemName, itemCode: r.itemCode, allKg: 0, filteredKg: 0, interCoKg: 0, allRows: 0, filteredRows: 0 };
+      map[key].allKg += r.soKg;
+      map[key].allRows++;
+      if (r.custGroup === 'Inter Company') map[key].interCoKg += r.soKg;
+    });
+    // Filtered rows
+    filtered.forEach(r => {
+      const key = r.itemName || r.itemCode;
+      if (map[key]) {
+        map[key].filteredKg += r.soKg;
+        map[key].filteredRows++;
+      }
+    });
+    return Object.values(map)
+      .filter(r => r.allKg > 0)
+      .map(r => ({ ...r, allKg: Math.round(r.allKg * 100) / 100, filteredKg: Math.round(r.filteredKg * 100) / 100, interCoKg: Math.round(r.interCoKg * 100) / 100, diff: Math.round((r.allKg - r.filteredKg) * 100) / 100 }))
+      .sort((a, b) => b.diff - a.diff);
+  }, [data.rows, filtered]);
+
+  const filteredAudit = debouncedAudit
+    ? allItemAudit.filter(r => r.itemName.toLowerCase().includes(debouncedAudit) || r.itemCode.toLowerCase().includes(debouncedAudit))
+    : allItemAudit;
+
+  return (
+    <div className="space-y-6">
+      {/* Cleaning Rules Report */}
+      <div className="bg-white rounded-lg shadow-sm p-5">
+        <h3 className="text-sm font-bold text-brand-900 mb-3">SO Cleaning Rules Report</h3>
+        <p className="text-xs text-gray-500 mb-3">Rows removed from raw SO data before processing. Total raw: <b>{data.config.soRowsRaw}</b> → After cleaning: <b>{data.config.soRowsClean}</b> ({data.config.soRowsRaw - data.config.soRowsClean} removed)</p>
+        <table className="w-full text-xs border-collapse">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="text-left px-3 py-2 border">Cleaning Rule</th>
+              <th className="text-right px-3 py-2 border">Rows Removed</th>
+              <th className="text-right px-3 py-2 border">Stock Qty (KGs) Removed</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.cleaningStats.length === 0 && (
+              <tr><td colSpan={3} className="px-3 py-2 border text-center text-gray-400">No rows removed by cleaning</td></tr>
+            )}
+            {data.cleaningStats.map(s => (
+              <tr key={s.rule} className="hover:bg-gray-50">
+                <td className="px-3 py-2 border font-medium">{s.rule}</td>
+                <td className="px-3 py-2 border text-right">{s.removedRows.toLocaleString('en-IN')}</td>
+                <td className="px-3 py-2 border text-right text-red-600 font-medium">{fmt(s.removedKg)}</td>
+              </tr>
+            ))}
+            <tr className="bg-gray-100 font-bold">
+              <td className="px-3 py-2 border">TOTAL</td>
+              <td className="px-3 py-2 border text-right">{(data.config.soRowsRaw - data.config.soRowsClean).toLocaleString('en-IN')}</td>
+              <td className="px-3 py-2 border text-right text-red-600">{fmt(data.cleaningStats.reduce((a, s) => a + s.removedKg, 0))}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* Per-Item SO KGs Audit */}
+      <div className="bg-white rounded-lg shadow-sm p-5">
+        <h3 className="text-sm font-bold text-brand-900 mb-1">Per-Item SO KGs Audit — Unfiltered vs Filtered</h3>
+        <p className="text-xs text-gray-500 mb-3">Compare SO KGs across all customer groups (unfiltered) vs your current filter selection. Diff = KGs excluded by filters (e.g., Inter Company unchecked).</p>
+        <input
+          value={auditSearch}
+          onChange={e => setAuditSearch(e.target.value)}
+          placeholder="Search item name or code..."
+          className="px-3 py-1.5 border rounded-md text-xs w-80 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 mb-3"
+        />
+        <div className="max-h-[500px] overflow-auto">
+          <table className="w-full text-xs border-collapse">
+            <thead className="sticky top-0">
+              <tr className="bg-gray-100">
+                <th className="text-left px-3 py-2 border">Item Name</th>
+                <th className="text-right px-3 py-2 border">All SO KGs</th>
+                <th className="text-right px-3 py-2 border">Inter Co. KGs</th>
+                <th className="text-right px-3 py-2 border">Filtered SO KGs</th>
+                <th className="text-right px-3 py-2 border">Diff (Excluded)</th>
+                <th className="text-right px-3 py-2 border">All Rows</th>
+                <th className="text-right px-3 py-2 border">Filtered Rows</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredAudit.slice(0, 200).map(r => (
+                <tr key={r.itemName} className={`hover:bg-gray-50 ${r.diff > 0 ? 'bg-yellow-50' : ''}`}>
+                  <td className="px-3 py-1.5 border font-medium max-w-xs truncate" title={r.itemName}>{r.itemName}</td>
+                  <td className="px-3 py-1.5 border text-right font-mono">{fmt(r.allKg)}</td>
+                  <td className="px-3 py-1.5 border text-right font-mono text-blue-600">{fmt(r.interCoKg)}</td>
+                  <td className="px-3 py-1.5 border text-right font-mono">{fmt(r.filteredKg)}</td>
+                  <td className={`px-3 py-1.5 border text-right font-mono font-bold ${r.diff > 0 ? 'text-red-600' : 'text-green-600'}`}>{r.diff > 0 ? '+' : ''}{fmt(r.diff)}</td>
+                  <td className="px-3 py-1.5 border text-right">{r.allRows}</td>
+                  <td className="px-3 py-1.5 border text-right">{r.filteredRows}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function Dashboard({ data, onReUpload }: DashboardProps) {
@@ -246,6 +357,7 @@ export default function Dashboard({ data, onReUpload }: DashboardProps) {
             <DataTable data={filtered.filter(r => r.isUnproj)} />
           </div>
         )}
+        {tab === 'data-audit' && <DataAudit data={data} filtered={filtered} />}
       </div>
     </div>
   );
