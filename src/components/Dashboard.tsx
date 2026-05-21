@@ -334,11 +334,11 @@ export default function Dashboard({ data, onReUpload }: DashboardProps) {
 
         {/* Tab Content */}
         {tab === 'dashboard' && <DataTable data={filtered} />}
-        {tab === 'cfa-items' && <GroupedView rows={filtered.filter(r => CFA_ITEM_NAMES.has(r.itemName))} groupBy="itemName" subGroupBy="customer" />}
-        {tab === 'new-mis' && <GroupedView rows={filtered} groupBy="newMIS" />}
-        {tab === 'cust-group' && <GroupedView rows={filtered} groupBy="custGroup" subGroupBy="customer" />}
-        {tab === 'origin' && <GroupedView rows={filtered} groupBy="origin" />}
-        {tab === 'item-name' && <GroupedView rows={filtered} groupBy="itemName" subGroupBy="customer" />}
+        {tab === 'cfa-items' && <GroupedView rows={filtered.filter(r => CFA_ITEM_NAMES.has(r.itemName))} groupBy="itemName" subGroupBy="customer" daysElapsed={cfg.daysElapsed} />}
+        {tab === 'new-mis' && <GroupedView rows={filtered} groupBy="newMIS" daysElapsed={cfg.daysElapsed} />}
+        {tab === 'cust-group' && <GroupedView rows={filtered} groupBy="custGroup" subGroupBy="customer" daysElapsed={cfg.daysElapsed} />}
+        {tab === 'origin' && <GroupedView rows={filtered} groupBy="origin" daysElapsed={cfg.daysElapsed} />}
+        {tab === 'item-name' && <GroupedView rows={filtered} groupBy="itemName" subGroupBy="customer" daysElapsed={cfg.daysElapsed} />}
         {tab === 'top-kg' && <Leaderboard data={dynLeaderboards.top20Kg} title="Top 20 Exceeding — KGs" subtitle="SKUs where SO exceeds projection pace — procurement action needed" />}
         {tab === 'top-unit' && <Leaderboard data={dynLeaderboards.top20Units} title="Top 20 Exceeding — Units" subtitle="SKUs where SO exceeds projection pace by unit count" />}
         {tab === 'bot-kg' && <Leaderboard data={dynLeaderboards.bot20Kg} title="Bottom 20 Lagging — KGs" subtitle="SKUs with lowest SO achievement — demand visibility needed" />}

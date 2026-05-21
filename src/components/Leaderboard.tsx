@@ -18,10 +18,10 @@ export default function Leaderboard({ data, title, subtitle }: { data: Row[]; ti
             <th className="px-2 py-2 text-left">Item Code</th>
             <th className="px-2 py-2 text-left">Item Name</th>
             <th className="px-2 py-2 text-right">Proj KGs</th>
-            <th className="px-2 py-2 text-right">Exp KGs</th>
             <th className="px-2 py-2 text-right">SO KGs</th>
-            <th className="px-2 py-2 text-center">Ach% KGs</th>
-            <th className="px-2 py-2 text-center">Ach% Units</th>
+            <th className="px-2 py-2 text-right">Exp KGs</th>
+            <th className="px-2 py-2 text-center">MTD Ach%</th>
+            <th className="px-2 py-2 text-center">SO vs Proj%</th>
             <th className="px-2 py-2 text-right">Diff KGs</th>
             <th className="px-2 py-2 text-right">RunRate KGs</th>
           </tr>
@@ -36,10 +36,10 @@ export default function Leaderboard({ data, title, subtitle }: { data: Row[]; ti
               <td className="px-2 py-1.5 font-medium">{r.itemCode}</td>
               <td className="px-2 py-1.5 max-w-[180px] truncate">{r.itemName}</td>
               <td className="px-2 py-1.5 text-right">{fmt(r.projKg)}</td>
-              <td className="px-2 py-1.5 text-right">{fmt(r.expKg)}</td>
               <td className="px-2 py-1.5 text-right">{fmt(r.soKg)}</td>
+              <td className="px-2 py-1.5 text-right">{fmt(r.expKg)}</td>
               <td className="px-2 py-1.5 text-center"><span className={`px-2 py-0.5 rounded ${achClass(r.achKg)}`}>{fmtPct(r.achKg)}</span></td>
-              <td className="px-2 py-1.5 text-center"><span className={`px-2 py-0.5 rounded ${achClass(r.achUnits)}`}>{fmtPct(r.achUnits)}</span></td>
+              <td className="px-2 py-1.5 text-center">{r.projKg > 0 ? fmtPct(r.soVsProj) : '-'}</td>
               <td className={`px-2 py-1.5 text-right ${r.diffKg < 0 ? 'text-red-700 font-semibold' : 'text-green-700'}`}>{fmt(r.diffKg)}</td>
               <td className="px-2 py-1.5 text-right">{fmt(r.runRateKg)}</td>
             </tr>

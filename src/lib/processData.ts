@@ -102,25 +102,36 @@ export function processExcelFiles(projBuffer: ArrayBuffer, soBuffer: ArrayBuffer
   soRaw = cleanResult.cleaned;
   const cleaningStats = cleanResult.stats;
 
-  // ─── Customer Group Remapping ───
-  // Projection: Category A + Jhabak Marketing → Modern Trade
-  //             Category A + any other customer → keep CG as Category A, remap Customer to "GT Retail"
-  // SO:         Category A → Customer becomes "GT Retail"
-  // This ensures both sides use the same Customer value for Category A so the join key matches.
-  projRaw.forEach(r => {
+  // ─── Customer Group / Customer Remapping ───
+  const INSTAMART_CUSTOMERS = new Set([
+    'Moksh Enterprises Private Limited',
+    'PJTJ Technologies Private Limited',
+    'Cloudkart Ventures Private Limited',
+    'Jupiter Kart Private Limited',
+    'Cloudstore Retail Private Limited',
+  ]);
+
+  function remapCustomer(r: RawRow) {
     const cg = str(r['Customer Group']);
     const cust = str(r['Customer']);
+    // Category A + Jhabak Marketing → Modern Trade
     if (cg === 'Category A' && cust === 'Jhabak Marketing') {
       r['Customer Group'] = 'Modern Trade';
     } else if (cg === 'Category A') {
       r['Customer'] = 'GT Retail';
     }
-  });
-  soRaw.forEach(r => {
-    if (str(r['Customer Group']) === 'Category A') {
-      r['Customer'] = 'GT Retail';
+    // CPC KPKB → Customer = CPC KPKB
+    if (cg === 'CPC KPKB') {
+      r['Customer'] = 'CPC KPKB';
     }
-  });
+    // Quick Commerce + specific customers → Instamart
+    if (cg === 'Quick Commerce' && INSTAMART_CUSTOMERS.has(cust)) {
+      r['Customer'] = 'Instamart';
+    }
+  }
+
+  projRaw.forEach(remapCustomer);
+  soRaw.forEach(remapCustomer);
 
   // ─── Date range — always from 1st of month to max SO date ───
   const soDates = soRaw.map(r => parseDate(r['Sales Order Date'])).filter(d => !isNaN(d.getTime()));
@@ -191,6 +202,10 @@ export function processExcelFiles(projBuffer: ArrayBuffer, soBuffer: ArrayBuffer
     const so = soMap[key] || { soKg: 0, soUnits: 0, newMIS: '' };
     const achKg = expKg > 0 ? (so.soKg / expKg) * 100 : 0;
     const achUnits = expUnits > 0 ? (so.soUnits / expUnits) * 100 : 0;
+    const soVsProj = projKg > 0 ? (so.soKg / projKg) * 100 : 0;
+    const soLeftPct = 100 - soVsProj;
+    const soPctPerDay = daysElapsed > 0 ? soVsProj / daysElapsed : 0;
+    const daysToCover = soPctPerDay > 0 ? soLeftPct / soPctPerDay : 0;
 
     rows.push({
       month: str(r['Month']),
@@ -222,6 +237,10 @@ export function processExcelFiles(projBuffer: ArrayBuffer, soBuffer: ArrayBuffer
       achUnits: round2(achUnits),
       runRateKg: round2(daysElapsed > 0 ? (so.soKg / daysElapsed) * daysInMonth : 0),
       runRateUnits: round2(daysElapsed > 0 ? (so.soUnits / daysElapsed) * daysInMonth : 0),
+      soVsProj: round2(soVsProj),
+      soLeftPct: round2(soLeftPct),
+      soPctPerDay: round2(soPctPerDay),
+      daysToCover: round2(daysToCover),
       isProj: true,
       isUnproj: false,
     });
@@ -249,6 +268,7 @@ export function processExcelFiles(projBuffer: ArrayBuffer, soBuffer: ArrayBuffer
       achKg: 0, achUnits: 0,
       runRateKg: round2(daysElapsed > 0 ? (so.soKg / daysElapsed) * daysInMonth : 0),
       runRateUnits: round2(daysElapsed > 0 ? (so.soUnits / daysElapsed) * daysInMonth : 0),
+      soVsProj: 0, soLeftPct: 0, soPctPerDay: 0, daysToCover: 0,
       isProj: false, isUnproj: true,
     });
   });

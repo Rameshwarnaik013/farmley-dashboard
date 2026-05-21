@@ -17,20 +17,37 @@ const columns = [
   ch.accessor('itemGroup', { header: 'Item Group', size: 130 }),
   ch.accessor('newMIS', { header: 'New MIS', size: 110 }),
   ch.accessor('projKg', { header: 'Proj KGs', size: 90, cell: i => fmt(i.getValue()) }),
-  ch.accessor('projUnits', { header: 'Proj Units', size: 90, cell: i => fmt(i.getValue(), 0) }),
-  ch.accessor('dailyKg', { header: 'Daily KGs', size: 85, cell: i => fmt(i.getValue()) }),
-  ch.accessor('dailyUnits', { header: 'Daily Units', size: 85, cell: i => fmt(i.getValue(), 0) }),
-  ch.accessor('expKg', { header: 'Exp KGs', size: 90, cell: i => fmt(i.getValue()) }),
-  ch.accessor('expUnits', { header: 'Exp Units', size: 90, cell: i => fmt(i.getValue(), 0) }),
   ch.accessor('soKg', { header: 'SO KGs', size: 90, cell: i => fmt(i.getValue()) }),
+  ch.accessor('projUnits', { header: 'Proj Units', size: 90, cell: i => fmt(i.getValue(), 0) }),
+  ch.accessor('expUnits', { header: 'Exp SO Units', size: 95, cell: i => fmt(i.getValue(), 0) }),
+  ch.accessor('expKg', { header: 'Exp KGs', size: 90, cell: i => fmt(i.getValue()) }),
   ch.accessor('soUnits', { header: 'SO Units', size: 90, cell: i => fmt(i.getValue(), 0) }),
   ch.accessor('achKg', {
-    header: 'Ach% KGs', size: 85,
+    header: 'MTD Ach%', size: 85,
     cell: i => <span className={`px-2 py-0.5 rounded text-xs ${achClass(i.getValue())}`}>{fmtPct(i.getValue())}</span>,
   }),
-  ch.accessor('achUnits', {
-    header: 'Ach% Units', size: 85,
-    cell: i => <span className={`px-2 py-0.5 rounded text-xs ${achClass(i.getValue())}`}>{fmtPct(i.getValue())}</span>,
+  ch.accessor('soVsProj', {
+    header: 'SO vs Proj%', size: 90,
+    cell: i => {
+      const v = i.getValue();
+      const projKg = i.row.original.projKg;
+      return projKg > 0 ? fmtPct(v) : '-';
+    },
+  }),
+  ch.accessor('soLeftPct', {
+    header: '% SO Left', size: 85,
+    cell: i => {
+      const projKg = i.row.original.projKg;
+      return projKg > 0 ? fmtPct(i.getValue()) : '-';
+    },
+  }),
+  ch.accessor('soPctPerDay', {
+    header: 'SO%/Day', size: 80,
+    cell: i => i.getValue() > 0 ? fmtPct(i.getValue()) : '-',
+  }),
+  ch.accessor('daysToCover', {
+    header: 'Days Left', size: 80,
+    cell: i => i.getValue() > 0 ? fmt(i.getValue(), 1) : '-',
   }),
   ch.accessor('diffKg', {
     header: 'Diff KGs', size: 90,

@@ -41,44 +41,40 @@ function writeConfigSheet(wb: XLSX.WorkBook, data: DashData) {
 function writeDashboardSheet(wb: XLSX.WorkBook, data: DashData) {
   const headers = [
     'Customer Group', 'Customer', 'Origin', 'Item Code', 'Item Name', 'Item Group', 'New MIS',
-    'Proj KGs', 'Proj Units', 'Daily Demand KG', 'Daily Demand Units',
-    'Expected KGs', 'Expected Units', 'SO KGs', 'SO Units',
-    'Diff KGs', 'Diff Units', 'Ach% KGs', 'Ach% Units',
-    'Run Rate KG/Month', 'Run Rate Units/Month', 'Is Projected', 'Is Unprojected'
+    'Proj KGs', 'SO KGs', 'Proj Units', 'Exp SO Units',
+    'Exp KGs', 'SO Units', 'MTD Ach%',
+    'SO vs Proj%', '% SO Left', 'SO%/Day', 'Days Left',
+    'Diff KGs', 'Diff Units',
+    'RunRate KGs', 'RunRate Units', 'Is Projected', 'Is Unprojected'
   ];
   // Config references: B4=Days in Month, B7=Days Elapsed
-  const DIM = 'Config!$B$4'; // Days in Month
-  const DE = 'Config!$B$7';  // Days Elapsed
+  const DIM = 'Config!$B$4';
+  const DE = 'Config!$B$7';
 
+  // Column mapping: H=ProjKg, I=SOKg, J=ProjUnits, K=ExpSOUnits, L=ExpKg, M=SOUnits
+  // N=MTDAch%, O=SOvsProj%, P=%SOLeft, Q=SO%/Day, R=DaysLeft
+  // S=DiffKg, T=DiffUnits, U=RunRateKg, V=RunRateUnits
   const aoa: unknown[][] = [headers];
 
   data.rows.forEach((r, i) => {
-    const row = i + 2; // Excel row (1-indexed, header is row 1)
-    const projKgCol = colLetter(7);   // H
-    const projUnCol = colLetter(8);   // I
-    const dailyKgCol = colLetter(9);  // J
-    const dailyUnCol = colLetter(10); // K
-    const expKgCol = colLetter(11);   // L
-    const expUnCol = colLetter(12);   // M
-    const soKgCol = colLetter(13);    // N
-    const soUnCol = colLetter(14);    // O
-
+    const row = i + 2;
     aoa.push([
       r.custGroup, r.customer, r.origin, r.itemCode, r.itemName, r.itemGroup, r.newMIS,
-      r.projKg,    // H: Proj KGs (value)
-      r.projUnits, // I: Proj Units (value)
-      { f: `${projKgCol}${row}/${DIM}` },   // J: Daily Demand KG = ProjKg / DaysInMonth
-      { f: `${projUnCol}${row}/${DIM}` },   // K: Daily Demand Units = ProjUnits / DaysInMonth
-      { f: `${dailyKgCol}${row}*${DE}` },   // L: Expected KGs = DailyKg * DaysElapsed
-      { f: `${dailyUnCol}${row}*${DE}` },   // M: Expected Units = DailyUnits * DaysElapsed
-      r.soKg,      // N: SO KGs (value)
-      r.soUnits,   // O: SO Units (value)
-      { f: `${expKgCol}${row}-${soKgCol}${row}` },  // P: Diff KGs
-      { f: `${expUnCol}${row}-${soUnCol}${row}` },  // Q: Diff Units
-      { f: `IF(${expKgCol}${row}=0,0,${soKgCol}${row}/${expKgCol}${row})` },   // R: Ach% KGs
-      { f: `IF(${expUnCol}${row}=0,0,${soUnCol}${row}/${expUnCol}${row})` },   // S: Ach% Units
-      { f: `IF(${DE}=0,0,(${soKgCol}${row}/${DE})*${DIM})` },  // T: Run Rate KG/Month
-      { f: `IF(${DE}=0,0,(${soUnCol}${row}/${DE})*${DIM})` },  // U: Run Rate Units/Month
+      r.projKg,                                        // H: Proj KGs
+      r.soKg,                                          // I: SO KGs
+      r.projUnits,                                     // J: Proj Units
+      { f: `IF(${DIM}=0,0,(J${row}/${DIM})*${DE})` }, // K: Exp SO Units = (ProjUnits/DIM)*DE
+      { f: `IF(${DIM}=0,0,(H${row}/${DIM})*${DE})` }, // L: Exp KGs = (ProjKg/DIM)*DE
+      r.soUnits,                                       // M: SO Units
+      { f: `IF(L${row}=0,0,I${row}/L${row})` },       // N: MTD Ach% = SOKg/ExpKg
+      { f: `IF(H${row}=0,0,I${row}/H${row})` },       // O: SO vs Proj% = SOKg/ProjKg
+      { f: `IF(H${row}=0,0,1-O${row})` },             // P: % SO Left = 1 - SOvsProj
+      { f: `IF(${DE}=0,0,O${row}/${DE})` },            // Q: SO%/Day = SOvsProj/DaysElapsed
+      { f: `IF(Q${row}=0,0,P${row}/Q${row})` },       // R: Days Left = %SOLeft/SO%perDay
+      { f: `L${row}-I${row}` },                        // S: Diff KGs = ExpKg - SOKg
+      { f: `K${row}-M${row}` },                        // T: Diff Units = ExpSOUnits - SOUnits
+      { f: `IF(${DE}=0,0,(I${row}/${DE})*${DIM})` },  // U: RunRate KGs
+      { f: `IF(${DE}=0,0,(M${row}/${DE})*${DIM})` },  // V: RunRate Units
       r.isProj ? 'Yes' : 'No',
       r.isUnproj ? 'Yes' : 'No',
     ]);
@@ -86,29 +82,23 @@ function writeDashboardSheet(wb: XLSX.WorkBook, data: DashData) {
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
 
-  // Format Ach% columns as percentage
-  const achKgCol = colLetter(17); // R
-  const achUnCol = colLetter(18); // S
+  // Format percentage columns
+  const pctCols = ['N', 'O', 'P', 'Q']; // MTD Ach%, SO vs Proj%, % SO Left, SO%/Day
   for (let i = 0; i < data.rows.length; i++) {
     const row = i + 2;
-    const cellR = ws[`${achKgCol}${row}`];
-    const cellS = ws[`${achUnCol}${row}`];
-    if (cellR) cellR.z = '0.0%';
-    if (cellS) cellS.z = '0.0%';
+    pctCols.forEach(c => { if (ws[`${c}${row}`]) ws[`${c}${row}`].z = '0.0%'; });
   }
 
-  // Column widths
   ws['!cols'] = [
     { wch: 16 }, { wch: 20 }, { wch: 12 }, { wch: 18 }, { wch: 40 }, { wch: 16 }, { wch: 16 },
-    { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 },
-    { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 12 },
-    { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 },
-    { wch: 16 }, { wch: 16 }, { wch: 10 }, { wch: 12 },
+    { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 13 },
+    { wch: 12 }, { wch: 12 }, { wch: 10 },
+    { wch: 11 }, { wch: 10 }, { wch: 10 }, { wch: 10 },
+    { wch: 12 }, { wch: 12 },
+    { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 12 },
   ];
 
-  // Auto-filter
   ws['!autofilter'] = { ref: `A1:${colLetter(headers.length - 1)}${data.rows.length + 1}` };
-
   XLSX.utils.book_append_sheet(wb, ws, 'Dashboard');
 }
 

@@ -25,6 +25,7 @@ export interface Row {
   dailyKg: number; dailyUnits: number; expKg: number; expUnits: number;
   soKg: number; soUnits: number; diffKg: number; diffUnits: number;
   achKg: number; achUnits: number; runRateKg: number; runRateUnits: number;
+  soVsProj: number; soLeftPct: number; soPctPerDay: number; daysToCover: number;
   isProj: boolean; isUnproj: boolean;
 }
 
