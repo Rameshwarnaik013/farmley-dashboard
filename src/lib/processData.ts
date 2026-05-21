@@ -11,18 +11,29 @@ function parseDate(v: unknown): Date {
   return new Date(v as string);
 }
 
+// Trim and normalize string fields
+function str(v: unknown): string {
+  if (v == null) return '';
+  return String(v).trim();
+}
+
+// Build a normalized join key
+function joinKey(cg: string, cust: string, origin: string, ic: string): string {
+  return `${cg}|${cust}|${origin}|${ic}`;
+}
+
 interface RawRow { [key: string]: unknown; }
 
 function cleanSO(rows: RawRow[]): RawRow[] {
   return rows.filter(r => {
-    if (r['Sales Order Created By'] === 'Administrator') return false;
-    if (r['Workflow State'] === 'Internal Transfer' && !VALID_IT.includes(r['Sales Order Created By'] as string)) return false;
-    if (['On Hold', 'Rejected', 'Cancelled'].includes(r['Workflow State'] as string)) return false;
-    if (r['Purpose'] === 'Documentation') return false;
-    if (['Cancelled', 'On Hold', 'Rejected'].includes(r['Sales Order Status'] as string)) return false;
-    if (r['Sales Order Status'] === 'Internal Transfer' && !VALID_IT.includes(r['Sales Order Created By'] as string)) return false;
-    if (typeof r['Customer'] === 'string' && r['Customer'].startsWith('Sample Order')) return false;
-    if (r['Item Type'] === 'Bulk') return false;
+    if (str(r['Sales Order Created By']) === 'Administrator') return false;
+    if (str(r['Workflow State']) === 'Internal Transfer' && !VALID_IT.includes(str(r['Sales Order Created By']))) return false;
+    if (['On Hold', 'Rejected', 'Cancelled'].includes(str(r['Workflow State']))) return false;
+    if (str(r['Purpose']) === 'Documentation') return false;
+    if (['Cancelled', 'On Hold', 'Rejected'].includes(str(r['Sales Order Status']))) return false;
+    if (str(r['Sales Order Status']) === 'Internal Transfer' && !VALID_IT.includes(str(r['Sales Order Created By']))) return false;
+    if (str(r['Customer']).startsWith('Sample Order')) return false;
+    if (str(r['Item Type']) === 'Bulk') return false;
     if ((Number(r['Returned Qty']) || 0) > 1) return false;
     return true;
   });
@@ -69,16 +80,27 @@ export function processExcelFiles(projBuffer: ArrayBuffer, soBuffer: ArrayBuffer
   // Clean SO
   soRaw = cleanSO(soRaw);
 
-  // Remap customer groups
+  // ─── Customer Group Remapping ───
+  // Projection: Category A + Jhabak Marketing → Modern Trade
+  //             Category A + any other customer → keep CG as Category A, remap Customer to "GT Retail"
+  // SO:         Category A → Customer becomes "GT Retail"
+  // This ensures both sides use the same Customer value for Category A so the join key matches.
   projRaw.forEach(r => {
-    if (r['Customer Group'] === 'Category A' && r['Customer'] === 'Jhabak Marketing')
+    const cg = str(r['Customer Group']);
+    const cust = str(r['Customer']);
+    if (cg === 'Category A' && cust === 'Jhabak Marketing') {
       r['Customer Group'] = 'Modern Trade';
+    } else if (cg === 'Category A') {
+      r['Customer'] = 'GT Retail';
+    }
   });
   soRaw.forEach(r => {
-    if (r['Customer Group'] === 'Category A') r['Customer'] = 'GT Retail';
+    if (str(r['Customer Group']) === 'Category A') {
+      r['Customer'] = 'GT Retail';
+    }
   });
 
-  // Date range — always from 1st of month to max SO date
+  // ─── Date range — always from 1st of month to max SO date ───
   const soDates = soRaw.map(r => parseDate(r['Sales Order Date'])).filter(d => !isNaN(d.getTime()));
   soDates.sort((a, b) => a.getTime() - b.getTime());
   const dateTo = soDates[soDates.length - 1];
@@ -90,33 +112,50 @@ export function processExcelFiles(projBuffer: ArrayBuffer, soBuffer: ArrayBuffer
   const dateFromStr = dateFrom.toISOString().slice(0, 10);
   const dateToStr = dateTo.toISOString().slice(0, 10);
 
-  // Build SO lookup
-  const soMap: Record<string, { soKg: number; soUnits: number; newMIS: string }> = {};
+  // ─── Build SO lookup: group by (CustGroup, Customer, Origin, ItemCode) → SUM(Stock Qty) ───
+  const soMap: Record<string, { soKg: number; soUnits: number; newMIS: string; itemName: string; itemGroup: string; itemParent: string; convFactor: number; itemType: string }> = {};
   soRaw.forEach(r => {
-    const key = `${r['Customer Group']}|${r['Customer']}|${r['Origin']}|${r['Item Code']}`;
-    if (!soMap[key]) soMap[key] = { soKg: 0, soUnits: 0, newMIS: (r['NEW MIS ITEM GROUP'] as string) || '' };
+    const cg = str(r['Customer Group']);
+    const cust = str(r['Customer']);
+    const origin = str(r['Origin']);
+    const ic = str(r['Item Code']);
+    const key = joinKey(cg, cust, origin, ic);
+
+    if (!soMap[key]) {
+      soMap[key] = {
+        soKg: 0,
+        soUnits: 0,
+        newMIS: str(r['NEW MIS ITEM GROUP']),
+        itemName: str(r['Item Name']),
+        itemGroup: str(r['Item Group']),
+        itemParent: str(r['Parent Item']),
+        convFactor: Number(r['Conversion Factor']) || 0,
+        itemType: str(r['Item Type']),
+      };
+    }
+    // SUM up Stock Qty (KGs) and Qty (Units) for each group
     soMap[key].soKg += (Number(r['Stock Qty']) || 0);
     soMap[key].soUnits += (Number(r['Qty']) || 0);
-    if (!soMap[key].newMIS && r['NEW MIS ITEM GROUP']) soMap[key].newMIS = r['NEW MIS ITEM GROUP'] as string;
+    if (!soMap[key].newMIS && r['NEW MIS ITEM GROUP']) soMap[key].newMIS = str(r['NEW MIS ITEM GROUP']);
   });
 
-  // SO lookup by ItemCode for New MIS
+  // SO lookup by ItemCode for New MIS fallback
   const soItemMIS: Record<string, string> = {};
   soRaw.forEach(r => {
-    const ic = r['Item Code'] as string;
-    if (r['NEW MIS ITEM GROUP'] && !soItemMIS[ic]) soItemMIS[ic] = r['NEW MIS ITEM GROUP'] as string;
+    const ic = str(r['Item Code']);
+    if (r['NEW MIS ITEM GROUP'] && !soItemMIS[ic]) soItemMIS[ic] = str(r['NEW MIS ITEM GROUP']);
   });
 
-  // Build enriched projection rows
+  // ─── Build enriched rows via OUTER JOIN on (CustGroup, Customer, Origin, ItemCode) ───
   const rows: Row[] = [];
   const projKeys = new Set<string>();
 
   projRaw.forEach(r => {
-    const cg = (r['Customer Group'] as string) || '';
-    const cust = (r['Customer'] as string) || '';
-    const origin = (r['Origin'] as string) || '';
-    const ic = (r['Item Code'] as string) || '';
-    const key = `${cg}|${cust}|${origin}|${ic}`;
+    const cg = str(r['Customer Group']);
+    const cust = str(r['Customer']);
+    const origin = str(r['Origin']);
+    const ic = str(r['Item Code']);
+    const key = joinKey(cg, cust, origin, ic);
     projKeys.add(key);
 
     const projKg = Number(r['Total KGs']) || 0;
@@ -126,27 +165,28 @@ export function processExcelFiles(projBuffer: ArrayBuffer, soBuffer: ArrayBuffer
     const expKg = dailyKg * daysElapsed;
     const expUnits = dailyUnits * daysElapsed;
 
+    // Lookup SO aggregated value for this exact (CG, Customer, Origin, ItemCode) combination
     const so = soMap[key] || { soKg: 0, soUnits: 0, newMIS: '' };
     const achKg = expKg > 0 ? (so.soKg / expKg) * 100 : 0;
     const achUnits = expUnits > 0 ? (so.soUnits / expUnits) * 100 : 0;
 
     rows.push({
-      month: (r['Month'] as string) || '',
-      year: (r['Year'] as string) || '',
-      lastModDate: (r['Last Modified Date'] as string) || '',
-      lastModTime: (r['Last Modified Time'] as string) || '',
+      month: str(r['Month']),
+      year: str(r['Year']),
+      lastModDate: str(r['Last Modified Date']),
+      lastModTime: str(r['Last Modified Time']),
       itemCode: ic,
-      bomType: (r['BOM Item Type'] as string) || '',
-      itemGroup: (r['Item Group'] as string) || '',
-      itemName: (r['Item Name'] as string) || '',
-      itemParent: (r['Item Parent'] as string) || '',
+      bomType: str(r['BOM Item Type']),
+      itemGroup: str(r['Item Group']),
+      itemName: str(r['Item Name']),
+      itemParent: str(r['Item Parent']),
       convFactor: Number(r['Conversion Factor']) || 0,
       projUnits: round2(projUnits),
       customer: cust,
       projKg: round2(projKg),
       custGroup: cg,
       origin: origin,
-      itemType: (r['Item Type'] as string) || '',
+      itemType: str(r['Item Type']),
       newMIS: so.newMIS || soItemMIS[ic] || '',
       dailyKg: round2(dailyKg),
       dailyUnits: round2(dailyUnits),
@@ -165,22 +205,21 @@ export function processExcelFiles(projBuffer: ArrayBuffer, soBuffer: ArrayBuffer
     });
   });
 
-  // Add unprojected SO items
+  // Add unprojected SO items (SO entries that had no matching projection)
   Object.entries(soMap).forEach(([key, so]) => {
     if (projKeys.has(key)) return;
     const [cg, cust, origin, ic] = key.split('|');
-    const soRow = soRaw.find(r => r['Item Code'] === ic);
     rows.push({
       month: '', year: '', lastModDate: '', lastModTime: '',
       itemCode: ic,
       bomType: '',
-      itemGroup: (soRow?.['Item Group'] as string) || '',
-      itemName: (soRow?.['Item Name'] as string) || '',
-      itemParent: (soRow?.['Parent Item'] as string) || '',
-      convFactor: Number(soRow?.['Conversion Factor']) || 0,
+      itemGroup: so.itemGroup,
+      itemName: so.itemName,
+      itemParent: so.itemParent,
+      convFactor: so.convFactor,
       projUnits: 0, customer: cust, projKg: 0,
       custGroup: cg, origin: origin,
-      itemType: (soRow?.['Item Type'] as string) || '',
+      itemType: so.itemType,
       newMIS: so.newMIS || '',
       dailyKg: 0, dailyUnits: 0, expKg: 0, expUnits: 0,
       soKg: round2(so.soKg), soUnits: round2(so.soUnits),
