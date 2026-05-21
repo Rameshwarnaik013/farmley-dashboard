@@ -42,7 +42,6 @@ const columns = [
     header: 'Diff Units', size: 90,
     cell: i => <span className={i.getValue() < 0 ? 'text-red-700 font-semibold' : 'text-green-700'}>{fmt(i.getValue(), 0)}</span>,
   }),
-  ch.accessor('runRateKg', { header: 'RunRate KGs', size: 95, cell: i => fmt(i.getValue()) }),
   ch.accessor('runRateUnits', { header: 'RunRate Units', size: 95, cell: i => fmt(i.getValue(), 0) }),
 ];
 

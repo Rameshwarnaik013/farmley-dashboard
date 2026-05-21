@@ -34,14 +34,14 @@ function writeConfigSheet(wb: XLSX.WorkBook, data: DashData) {
 
 // ─── Dashboard (main data) sheet with formulas ───
 // H=ProjKg I=SOKg J=ProjUnits K=ExpSOUnits L=ExpKg M=SOUnits
-// N=MTDAch% O=SOvsProj% P=DiffKg Q=DiffUnits R=RunRateKg S=RunRateUnits
+// N=MTDAch% O=SOvsProj% P=DiffKg Q=DiffUnits R=RunRateUnits
 function writeDashboardSheet(wb: XLSX.WorkBook, data: DashData) {
   const headers = [
     'Customer Group', 'Customer', 'Origin', 'Item Code', 'Item Name', 'Item Group', 'New MIS',
     'Proj KGs', 'SO KGs', 'Proj Units', 'Exp SO Units',
     'Exp KGs', 'SO Units', 'MTD Ach%', 'SO vs Proj%',
     'Diff KGs', 'Diff Units',
-    'RunRate KGs', 'RunRate Units', 'Is Projected', 'Is Unprojected'
+    'RunRate Units', 'Is Projected', 'Is Unprojected'
   ];
   const DIM = 'Config!$B$4';
   const DE = 'Config!$B$7';
@@ -59,8 +59,7 @@ function writeDashboardSheet(wb: XLSX.WorkBook, data: DashData) {
       rnd(div(r.soKg, r.projKg)), // O
       rnd(r.diffKg),            // P
       rnd(r.diffUnits, 0),      // Q
-      rnd(r.runRateKg),         // R
-      rnd(r.runRateUnits, 0),   // S
+      rnd(r.runRateUnits, 0),   // R
       r.isProj ? 'Yes' : 'No',
       r.isUnproj ? 'Yes' : 'No',
     ]);
@@ -84,10 +83,8 @@ function writeDashboardSheet(wb: XLSX.WorkBook, data: DashData) {
     setF(ws, ri, 15, `L${row}-I${row}`, rnd(r.expKg - r.soKg));
     // Q (16): Diff Units
     setF(ws, ri, 16, `K${row}-M${row}`, rnd(r.expUnits - r.soUnits, 0));
-    // R (17): RunRate KGs
-    setF(ws, ri, 17, `IF(${DE}=0,0,(I${row}/${DE})*${DIM})`, rnd(r.runRateKg));
-    // S (18): RunRate Units
-    setF(ws, ri, 18, `IF(${DE}=0,0,(M${row}/${DE})*${DIM})`, rnd(r.runRateUnits, 0));
+    // R (17): RunRate Units
+    setF(ws, ri, 17, `IF(${DE}=0,0,(M${row}/${DE})*${DIM})`, rnd(r.runRateUnits, 0));
   });
 
   ws['!cols'] = [
@@ -95,7 +92,7 @@ function writeDashboardSheet(wb: XLSX.WorkBook, data: DashData) {
     { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 13 },
     { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 11 },
     { wch: 12 }, { wch: 12 },
-    { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 12 },
+    { wch: 14 }, { wch: 10 }, { wch: 12 },
   ];
   ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: data.rows.length, c: headers.length - 1 } }) };
   XLSX.utils.book_append_sheet(wb, ws, 'Dashboard');
@@ -354,7 +351,7 @@ function writeSummarySheet(wb: XLSX.WorkBook, summaries: Summary[], sheetName: s
 }
 
 // ─── Leaderboard sheet ───
-// G=ProjKGs H=SOKGs I=ExpKGs J=MTDAch% K=SOvsProj% L=DiffKGs M=RunRateKGs
+// G=ProjKGs H=SOKGs I=ExpKGs J=MTDAch% K=SOvsProj% L=DiffKGs
 function writeLeaderboardSheet(wb: XLSX.WorkBook, rows: Row[], sheetName: string, data: DashData) {
   const DIM_REF = 'Config!$B$4';
   const DE_REF = 'Config!$B$7';
@@ -364,7 +361,7 @@ function writeLeaderboardSheet(wb: XLSX.WorkBook, rows: Row[], sheetName: string
   const headers = [
     'Rank', 'Item Code', 'Item Name', 'Cust Group', 'Customer', 'Origin',
     'Proj KGs', 'SO KGs', 'Exp KGs',
-    'MTD Ach%', 'SO vs Proj%', 'Diff KGs', 'RunRate KGs'
+    'MTD Ach%', 'SO vs Proj%', 'Diff KGs'
   ];
   const aoa: (string | number)[][] = [headers];
 
@@ -372,7 +369,7 @@ function writeLeaderboardSheet(wb: XLSX.WorkBook, rows: Row[], sheetName: string
     aoa.push([
       i + 1, r.itemCode, r.itemName, r.custGroup, r.customer, r.origin,
       r.projKg, r.soKg, rnd(r.expKg),
-      0, 0, 0, 0
+      0, 0, 0
     ]);
   });
 
@@ -392,14 +389,12 @@ function writeLeaderboardSheet(wb: XLSX.WorkBook, rows: Row[], sheetName: string
     setF(ws, ri, 10, `IF(G${R}=0,0,H${R}/G${R})`, rnd(soVsProj), PCT);
     // L (11): Diff KGs
     setF(ws, ri, 11, `I${R}-H${R}`, rnd(expKg - r.soKg));
-    // M (12): RunRate KGs
-    setF(ws, ri, 12, `IF(${DE_REF}=0,0,(H${R}/${DE_REF})*${DIM_REF})`, rnd(r.runRateKg));
   });
 
   ws['!cols'] = [
     { wch: 5 }, { wch: 18 }, { wch: 40 }, { wch: 16 }, { wch: 20 }, { wch: 12 },
     { wch: 12 }, { wch: 12 }, { wch: 12 },
-    { wch: 10 }, { wch: 11 }, { wch: 12 }, { wch: 14 },
+    { wch: 10 }, { wch: 11 }, { wch: 12 },
   ];
   XLSX.utils.book_append_sheet(wb, ws, sheetName);
 }

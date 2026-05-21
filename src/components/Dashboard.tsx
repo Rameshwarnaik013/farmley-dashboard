@@ -233,7 +233,6 @@ function InstructionsPanel({ cfg }: { cfg: DashData['config'] }) {
             <tr><td className={td}><b>Days Left</b></td><td className={td}><span className={code}>% SO Left / SO%/Day</span> — Estimated days needed to cover remaining projection at current pace</td></tr>
             <tr><td className={td}><b>Diff KGs</b></td><td className={td}><span className={code}>Exp KGs - SO KGs</span> — Positive = under-ordered, Negative = over-ordered</td></tr>
             <tr><td className={td}><b>Diff Units</b></td><td className={td}><span className={code}>Exp SO Units - SO Units</span></td></tr>
-            <tr><td className={td}><b>RunRate KGs</b></td><td className={td}><span className={code}>(SO KGs / Days Elapsed) x Days in Month</span> — Projected full-month SO at current pace</td></tr>
             <tr><td className={td}><b>RunRate Units</b></td><td className={td}><span className={code}>(SO Units / Days Elapsed) x Days in Month</span></td></tr>
           </tbody>
         </table>
@@ -372,7 +371,6 @@ function AchAbove100Table({ rows }: { rows: Row[] }) {
               <th className="bg-gray-700 text-white px-2 py-2 text-right cursor-pointer hover:bg-gray-600 select-none whitespace-nowrap" onClick={() => toggleSort('diffKg')}>
                 Diff KGs{sIcon('diffKg')}
               </th>
-              <th className="bg-gray-700 text-white px-2 py-2 text-right">RunRate KGs</th>
             </tr>
           </thead>
           <tbody>
@@ -394,11 +392,10 @@ function AchAbove100Table({ rows }: { rows: Row[] }) {
                 </td>
                 <td className="px-2 py-1.5 text-center">{r.projKg > 0 ? r.soVsProj.toFixed(1) + '%' : '-'}</td>
                 <td className={`px-2 py-1.5 text-right font-semibold ${r.diffKg < 0 ? 'text-red-700' : 'text-green-700'}`}>{fmt(r.diffKg)}</td>
-                <td className="px-2 py-1.5 text-right">{fmt(r.runRateKg)}</td>
               </tr>
             ))}
             {sorted.length === 0 && (
-              <tr><td colSpan={13} className="text-center py-8 text-gray-400">No items with MTD Ach% &gt; 100%</td></tr>
+              <tr><td colSpan={12} className="text-center py-8 text-gray-400">No items with MTD Ach% &gt; 100%</td></tr>
             )}
           </tbody>
         </table>
