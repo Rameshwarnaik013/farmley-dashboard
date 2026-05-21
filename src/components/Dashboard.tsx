@@ -73,13 +73,13 @@ const CFA_ITEM_NAMES = new Set([
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'ach-above-100', label: 'MTD Ach% > 100%' },
+  { id: 'item-name', label: 'By Item Name' },
   { id: 'instructions', label: 'Instructions' },
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'cfa-items', label: 'CFA Items Run Rate' },
   { id: 'new-mis', label: 'By New MIS' },
   { id: 'cust-group', label: 'By Customer Group' },
   { id: 'origin', label: 'By Origin' },
-  { id: 'item-name', label: 'By Item Name' },
   { id: 'top-kg', label: 'Top 20 (KGs)' },
   { id: 'top-unit', label: 'Top 20 (Units)' },
   { id: 'bot-kg', label: 'Bottom 20 (KGs)' },
@@ -350,10 +350,6 @@ function AchAbove100Table({ rows }: { rows: Row[] }) {
           <thead className="sticky top-0 z-10">
             <tr>
               <th className="bg-gray-700 text-white px-2 py-2 text-center w-8">#</th>
-              <th className="bg-gray-700 text-white px-2 py-2 text-left">Cust Group</th>
-              <th className="bg-gray-700 text-white px-2 py-2 text-left">Customer</th>
-              <th className="bg-gray-700 text-white px-2 py-2 text-left">Origin</th>
-              <th className="bg-gray-700 text-white px-2 py-2 text-left">Item Code</th>
               <th className="bg-gray-700 text-white px-2 py-2 text-left">Item Name</th>
               <th className="bg-gray-700 text-white px-2 py-2 text-right cursor-pointer hover:bg-gray-600 select-none whitespace-nowrap" onClick={() => toggleSort('projKg')}>
                 Proj KGs{sIcon('projKg')}
@@ -377,11 +373,7 @@ function AchAbove100Table({ rows }: { rows: Row[] }) {
             {sorted.map((r, i) => (
               <tr key={`${r.itemCode}-${r.customer}-${r.origin}-${i}`} className="border-b border-gray-100 hover:bg-blue-50/40 even:bg-gray-50/50">
                 <td className="px-2 py-1.5 text-center font-bold text-gray-400">{i + 1}</td>
-                <td className="px-2 py-1.5">{r.custGroup}</td>
-                <td className="px-2 py-1.5 max-w-[140px] truncate">{r.customer}</td>
-                <td className="px-2 py-1.5">{r.origin}</td>
-                <td className="px-2 py-1.5 font-medium">{r.itemCode}</td>
-                <td className="px-2 py-1.5 max-w-[200px] truncate">{r.itemName}</td>
+                <td className="px-2 py-1.5 max-w-[280px] truncate">{r.itemName}</td>
                 <td className="px-2 py-1.5 text-right">{fmt(r.projKg)}</td>
                 <td className="px-2 py-1.5 text-right">{fmt(r.soKg)}</td>
                 <td className="px-2 py-1.5 text-right">{fmt(r.expKg)}</td>
@@ -395,7 +387,7 @@ function AchAbove100Table({ rows }: { rows: Row[] }) {
               </tr>
             ))}
             {sorted.length === 0 && (
-              <tr><td colSpan={12} className="text-center py-8 text-gray-400">No items with MTD Ach% &gt; 100%</td></tr>
+              <tr><td colSpan={8} className="text-center py-8 text-gray-400">No items with MTD Ach% &gt; 100%</td></tr>
             )}
           </tbody>
         </table>
