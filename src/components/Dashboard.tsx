@@ -8,10 +8,70 @@ import GroupedView from './GroupedView';
 import Leaderboard from './Leaderboard';
 import SummaryChart from './SummaryChart';
 
-type Tab = 'dashboard' | 'new-mis' | 'cust-group' | 'origin' | 'item-name' | 'top-kg' | 'top-unit' | 'bot-kg' | 'bot-unit' | 'summary-ig' | 'summary-origin' | 'zero-so' | 'unproj';
+type Tab = 'dashboard' | 'cfa-items' | 'new-mis' | 'cust-group' | 'origin' | 'item-name' | 'top-kg' | 'top-unit' | 'bot-kg' | 'bot-unit' | 'summary-ig' | 'summary-origin' | 'zero-so' | 'unproj';
+
+const CFA_ITEM_NAMES = new Set([
+  'Apple Pie Date Bite Farmley sachet 20 g - Single serve',
+  'Apple Pie Date Bite Farmley Tin Jar 200g',
+  'Apple Pie Date Bites Farmley Monocarton 240 g - Pack of 12 (20 g Each)',
+  'Assorted Pack Farmley 60g Dark Choco Orange Date Bite 20g, Classic Date Bite 20g, Apple Pie Date Bite 20g',
+  'Berry Mix Farmley Standee Pouch 200 g',
+  'Classic Date Bites Farmley Monocarton 240 g - Pack of 12 (20 g Each)',
+  'Classic Date Bites Farmley Sachet 20 g - Single Serve',
+  'Classic Date Bites Farmley Tin Jar 200 g',
+  'Coffee Rush Date Bite Farmley Sachet 20g- Single Serve',
+  'Coffee Rush Date Bite Farmley Tin Jar 200g',
+  'Dark Choco Orange Date Bites Farmley Sachet 20 g - Single Serve',
+  'Dark Choco-Orange Date Bite Farmley Tin Jar 200g',
+  'Dark Choco-Orange Date Bites Monocarton 240 g - Pack of 12 (20 g Each)',
+  'Fruit and Nut Mix Farmley Pillow Pouch 28g- Single serve',
+  'Mexican Peri Peri Snack Mix Farmley Composite Jar 325 g',
+  'Mexican Peri Peri Snack Mix Farmley 21g - Pack of 10 (Ladi)',
+  'Mexican Peri Peri Snack Mix Farmley Pillow Pouch 21g (In SRP 8 Pcs Each)',
+  'Mexican Peri-Peri Snack Mix Farmley Pillow Pouch 35 g- Single Serve',
+  'Prasadam Makhana Center Seal Pouch 100 g- NEW',
+  'Prasadam Makhana Center Seal Pouch 200 g- NEW',
+  'Prasadam Makhana Farmley Center Seal Pouch 60g-New',
+  'Premium Panchmeva Farmley Jar 405 g',
+  'Premium Panchmeva Farmley Jar 425 g- Institutional',
+  'Premium Panchmeva Farmley Pillow Pouch 21 g - Pack of 10 (Ladi)',
+  'Premium Panchmeva Farmley Pillow Pouch 30g- single serve',
+  'Premium Panchmeva Farmley Pillow Pouch 21g (In SRP 8 Pcs Each)',
+  'Roasted & Flavored Makhana - Achaari Farmley Composite Jar 77 g',
+  'Roasted & Flavored Makhana - Achaari Farmley Pillow Pouch 20 g',
+  'Roasted & Flavored Makhana - Black Pepper Farmley Composite jar 77 g',
+  'Roasted & Flavored Makhana - Cream & Onion Farmley Pillow Pouch 20 g',
+  'Roasted & Flavored Makhana - Mint Farmley Composite Jar 77 g',
+  'Roasted & Flavored Makhana - Peri Peri Farmley Composite Jar 77 g',
+  'Roasted & Flavored Makhana - Peri Peri Farmley Pillow Pouch 14 g-Ladi',
+  'Roasted & Flavored Makhana - Peri Peri Farmley Pillow Pouch 20 g',
+  'Roasted & Flavored Makhana - Tangy Tomato Farmley Composite Jar 77 g',
+  'Roasted & Flavored Makhana - Tangy Tomato Farmley Pillow Pouch 20 g',
+  'Roasted & Flavored Makhana -Cheddar Cheese Farmley Composite Jar 77 g',
+  'Roasted & Flavored Makhana -Cream and Onion Farmley Composite Jar 77 g',
+  'Roasted & Flavoured Achaari Makhana Farmley Jar 55 g',
+  'Roasted & Flavoured Cheddar Cheese Makhana Farmley Jar 55 g',
+  'Roasted & Flavoured Cream & Onion Makhana Farmley Jar 55 g',
+  'Roasted & Flavoured Makhana - Achaari Farmley Pillow Pouch 14g-Ladi',
+  'Roasted & Flavoured Makhana - Cream & Onion Farmley Pillow Pouch 14g-Ladi',
+  'Roasted & Flavoured Makhana - Tangy Tomato Farmley Pillow Pouch 14g-Ladi',
+  'Roasted & Flavoured Minty Pudina Makhana Farmley Jar 55 g',
+  'Roasted & Flavoured Peri Peri Makhana Farmley Jar 55 g',
+  'Roasted & Flavoured Salt & Pepper Makhana Farmley Jar 55 g',
+  'Roasted & Flavoured Tangy Tomato Makhana Farmley Jar 55 g',
+  'Roasted & Salted Makhana Farmley Composite Jar 77 g',
+  'Roasted & Salted Makhana Farmley Jar 55 g',
+  'Roasted & Salted Makhana Farmley Pillow Pouch 20 g',
+  'Seed Mix Farmley Standee Pouch 200 g',
+  'Smokey BBQ Party Mix Pillow Pouch Farmley 28 g- Single serve',
+  'Sweet and Salty Mix Farmley Pillow Pouch 23g (In SRP 8 Pcs Each)',
+  'Trail Mix Farmley Composite Jar 325 g',
+  'Trail Mix Farmley Standee Pouch 200 g',
+]);
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'dashboard', label: 'Dashboard' },
+  { id: 'cfa-items', label: 'CFA Items Run Rate' },
   { id: 'new-mis', label: 'By New MIS' },
   { id: 'cust-group', label: 'By Customer Group' },
   { id: 'origin', label: 'By Origin' },
@@ -125,7 +185,7 @@ export default function Dashboard() {
 
       <div className="p-4 max-w-[1920px] mx-auto">
         {/* Filters */}
-        {['dashboard', 'new-mis', 'cust-group', 'origin', 'item-name', 'zero-so', 'unproj'].includes(tab) && (
+        {['dashboard', 'cfa-items', 'new-mis', 'cust-group', 'origin', 'item-name', 'zero-so', 'unproj'].includes(tab) && (
           <div className="bg-white rounded-lg shadow-sm p-4 mb-4 flex gap-4 flex-wrap">
             <FilterBar label="Customer Group" options={data.filters.custGroups} selected={cgFilter} onChange={setCgFilter} />
             <FilterBar label="Origin" options={data.filters.origins} selected={originFilter} onChange={setOriginFilter} />
@@ -134,7 +194,7 @@ export default function Dashboard() {
         )}
 
         {/* Legend + Search */}
-        {['dashboard', 'new-mis', 'cust-group', 'origin', 'item-name'].includes(tab) && (
+        {['dashboard', 'cfa-items', 'new-mis', 'cust-group', 'origin', 'item-name'].includes(tab) && (
           <>
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <div className="flex gap-2 flex-wrap text-[10px]">
@@ -152,12 +212,13 @@ export default function Dashboard() {
                 className="px-3 py-1.5 border rounded-md text-xs w-64 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20"
               />
             </div>
-            <StatsCards rows={filtered} />
+            <StatsCards rows={tab === 'cfa-items' ? filtered.filter(r => CFA_ITEM_NAMES.has(r.itemName)) : filtered} />
           </>
         )}
 
         {/* Tab Content */}
         {tab === 'dashboard' && <DataTable data={filtered} />}
+        {tab === 'cfa-items' && <GroupedView rows={filtered.filter(r => CFA_ITEM_NAMES.has(r.itemName))} groupBy="itemName" subGroupBy="customer" />}
         {tab === 'new-mis' && <GroupedView rows={filtered} groupBy="newMIS" />}
         {tab === 'cust-group' && <GroupedView rows={filtered} groupBy="custGroup" subGroupBy="customer" />}
         {tab === 'origin' && <GroupedView rows={filtered} groupBy="origin" />}
