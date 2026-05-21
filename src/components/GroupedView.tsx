@@ -197,9 +197,6 @@ export default function GroupedView({ rows, groupBy, subGroupBy, daysElapsed }: 
               <th className="bg-gray-700 text-white px-2 py-2 text-right">Exp KGs</th>
               <th className="bg-gray-700 text-white px-2 py-2 text-center whitespace-nowrap">MTD Ach%</th>
               <th className="bg-gray-700 text-white px-2 py-2 text-center whitespace-nowrap">SO vs Proj%</th>
-              <th className="bg-gray-700 text-white px-2 py-2 text-center whitespace-nowrap">% SO Left</th>
-              <th className="bg-gray-700 text-white px-2 py-2 text-center whitespace-nowrap">SO%/Day</th>
-              <th className="bg-gray-700 text-white px-2 py-2 text-right whitespace-nowrap">Days Left</th>
               <th className="bg-gray-700 text-white px-2 py-2 text-right">Diff KGs</th>
               <th className="bg-gray-700 text-white px-2 py-2 text-right">Diff Units</th>
             </tr>
@@ -214,7 +211,7 @@ export default function GroupedView({ rows, groupBy, subGroupBy, daysElapsed }: 
               );
             })}
             {filteredGroups.length === 0 && (
-              <tr><td colSpan={15} className="text-center py-8 text-gray-400">No groups match your search</td></tr>
+              <tr><td colSpan={12} className="text-center py-8 text-gray-400">No groups match your search</td></tr>
             )}
           </tbody>
         </table>
@@ -246,9 +243,6 @@ function AggCells({ a }: { a: AggResult }) {
       <td className="px-2 py-2 text-right">{fmt(a.expKg)}</td>
       <td className="px-2 py-2 text-center"><span className={`px-2 py-0.5 rounded text-xs ${achClass(a.achKg)}`}>{fmtPct(a.achKg)}</span></td>
       <td className="px-2 py-2 text-center">{a.projKg > 0 ? fmtPct(a.soVsProj) : '-'}</td>
-      <td className="px-2 py-2 text-center">{a.projKg > 0 ? fmtPct(a.soLeftPct) : '-'}</td>
-      <td className="px-2 py-2 text-center">{a.soPctPerDay > 0 ? fmtPct(a.soPctPerDay) : '-'}</td>
-      <td className="px-2 py-2 text-right">{a.soPctPerDay > 0 ? fmt(a.daysToCover, 1) : '-'}</td>
       <td className={`px-2 py-2 text-right ${a.diffKg < 0 ? 'text-red-700 font-semibold' : 'text-green-700'}`}>{fmt(a.diffKg)}</td>
       <td className={`px-2 py-2 text-right ${a.diffUnits < 0 ? 'text-red-700 font-semibold' : 'text-green-700'}`}>{fmt(a.diffUnits, 0)}</td>
     </>
@@ -316,9 +310,6 @@ function ItemRow({ r, indent, highlight }: { r: Row; indent: number; highlight: 
       <td className="px-2 py-1 text-right">{fmt(r.expKg)}</td>
       <td className="px-2 py-1 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] ${achClass(r.achKg)}`}>{fmtPct(r.achKg)}</span></td>
       <td className="px-2 py-1 text-center">{r.projKg > 0 ? fmtPct(r.soVsProj) : '-'}</td>
-      <td className="px-2 py-1 text-center">{r.projKg > 0 ? fmtPct(r.soLeftPct) : '-'}</td>
-      <td className="px-2 py-1 text-center">{r.soPctPerDay > 0 ? fmtPct(r.soPctPerDay) : '-'}</td>
-      <td className="px-2 py-1 text-right">{r.soPctPerDay > 0 ? fmt(r.daysToCover, 1) : '-'}</td>
       <td className={`px-2 py-1 text-right ${r.diffKg < 0 ? 'text-red-700 font-semibold' : 'text-green-700'}`}>{fmt(r.diffKg)}</td>
       <td className={`px-2 py-1 text-right ${r.diffUnits < 0 ? 'text-red-700 font-semibold' : 'text-green-700'}`}>{fmt(r.diffUnits, 0)}</td>
     </tr>

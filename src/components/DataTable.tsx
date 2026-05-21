@@ -34,21 +34,6 @@ const columns = [
       return projKg > 0 ? fmtPct(v) : '-';
     },
   }),
-  ch.accessor('soLeftPct', {
-    header: '% SO Left', size: 85,
-    cell: i => {
-      const projKg = i.row.original.projKg;
-      return projKg > 0 ? fmtPct(i.getValue()) : '-';
-    },
-  }),
-  ch.accessor('soPctPerDay', {
-    header: 'SO%/Day', size: 80,
-    cell: i => i.getValue() > 0 ? fmtPct(i.getValue()) : '-',
-  }),
-  ch.accessor('daysToCover', {
-    header: 'Days Left', size: 80,
-    cell: i => i.getValue() > 0 ? fmt(i.getValue(), 1) : '-',
-  }),
   ch.accessor('diffKg', {
     header: 'Diff KGs', size: 90,
     cell: i => <span className={i.getValue() < 0 ? 'text-red-700 font-semibold' : 'text-green-700'}>{fmt(i.getValue())}</span>,

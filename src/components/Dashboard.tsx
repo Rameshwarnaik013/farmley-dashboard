@@ -10,7 +10,7 @@ import GroupedView from './GroupedView';
 import Leaderboard from './Leaderboard';
 import SummaryChart from './SummaryChart';
 
-type Tab = 'instructions' | 'dashboard' | 'cfa-items' | 'new-mis' | 'cust-group' | 'origin' | 'item-name' | 'top-kg' | 'top-unit' | 'bot-kg' | 'bot-unit' | 'summary-ig' | 'summary-origin' | 'zero-so' | 'unproj' | 'data-audit';
+type Tab = 'ach-above-100' | 'instructions' | 'dashboard' | 'cfa-items' | 'new-mis' | 'cust-group' | 'origin' | 'item-name' | 'top-kg' | 'top-unit' | 'bot-kg' | 'bot-unit' | 'summary-ig' | 'summary-origin' | 'zero-so' | 'unproj' | 'data-audit';
 
 const CFA_ITEM_NAMES = new Set([
   'Apple Pie Date Bite Farmley sachet 20 g - Single serve',
@@ -72,6 +72,7 @@ const CFA_ITEM_NAMES = new Set([
 ]);
 
 const TABS: { id: Tab; label: string }[] = [
+  { id: 'ach-above-100', label: 'MTD Ach% > 100%' },
   { id: 'instructions', label: 'Instructions' },
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'cfa-items', label: 'CFA Items Run Rate' },
@@ -507,7 +508,7 @@ export default function Dashboard({ data, onReUpload }: DashboardProps) {
 
       <div className="p-4 max-w-[1920px] mx-auto">
         {/* Filters */}
-        {['dashboard', 'cfa-items', 'new-mis', 'cust-group', 'origin', 'item-name', 'top-kg', 'top-unit', 'bot-kg', 'bot-unit', 'summary-ig', 'summary-origin', 'zero-so', 'unproj'].includes(tab) && (
+        {['ach-above-100', 'dashboard', 'cfa-items', 'new-mis', 'cust-group', 'origin', 'item-name', 'top-kg', 'top-unit', 'bot-kg', 'bot-unit', 'summary-ig', 'summary-origin', 'zero-so', 'unproj'].includes(tab) && (
           <div className="bg-white rounded-lg shadow-sm p-4 mb-4 flex gap-4 flex-wrap">
             <FilterBar label="Customer Group" options={data.filters.custGroups} selected={cgFilter} onChange={setCgFilter} />
             <FilterBar label="Origin" options={data.filters.origins} selected={originFilter} onChange={setOriginFilter} />
@@ -516,7 +517,7 @@ export default function Dashboard({ data, onReUpload }: DashboardProps) {
         )}
 
         {/* Legend + Search */}
-        {['dashboard', 'cfa-items', 'new-mis', 'cust-group', 'origin', 'item-name'].includes(tab) && (
+        {['ach-above-100', 'dashboard', 'cfa-items', 'new-mis', 'cust-group', 'origin', 'item-name'].includes(tab) && (
           <>
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <div className="flex gap-2 flex-wrap text-[10px]">
@@ -534,11 +535,17 @@ export default function Dashboard({ data, onReUpload }: DashboardProps) {
                 className="px-3 py-1.5 border rounded-md text-xs w-64 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20"
               />
             </div>
-            <StatsCards rows={tab === 'cfa-items' ? filtered.filter(r => CFA_ITEM_NAMES.has(r.itemName)) : filtered} />
+            <StatsCards rows={tab === 'cfa-items' ? filtered.filter(r => CFA_ITEM_NAMES.has(r.itemName)) : tab === 'ach-above-100' ? filtered.filter(r => r.achKg > 100) : filtered} />
           </>
         )}
 
         {/* Tab Content */}
+        {tab === 'ach-above-100' && (
+          <div>
+            <h3 className="text-sm font-bold text-brand-900 mb-2">Items with MTD Ach% &gt; 100% ({filtered.filter(r => r.achKg > 100).length} items)</h3>
+            <DataTable data={filtered.filter(r => r.achKg > 100)} />
+          </div>
+        )}
         {tab === 'instructions' && <InstructionsPanel cfg={cfg} />}
         {tab === 'dashboard' && <DataTable data={filtered} />}
         {tab === 'cfa-items' && <GroupedView rows={filtered.filter(r => CFA_ITEM_NAMES.has(r.itemName))} groupBy="itemName" subGroupBy="customer" daysElapsed={cfg.daysElapsed} />}
