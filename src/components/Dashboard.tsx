@@ -2,6 +2,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { DashData, Row } from '@/lib/helpers';
 import { exportDashboardExcel } from '@/lib/exportExcel';
+import { aggGroup } from '@/lib/processData';
 import StatsCards from './StatsCards';
 import FilterBar from './FilterBar';
 import DataTable from './DataTable';
@@ -127,6 +128,20 @@ export default function Dashboard({ data, onReUpload }: DashboardProps) {
     });
   }, [data, cgFilter, originFilter, igFilter, debouncedSearch]);
 
+  // Dynamic summaries & leaderboards — respect current filter state
+  const dynSummaryIG = useMemo(() => aggGroup(filtered, 'itemGroup'), [filtered]);
+  const dynSummaryOrigin = useMemo(() => aggGroup(filtered, 'origin'), [filtered]);
+
+  const dynLeaderboards = useMemo(() => {
+    const withProj = filtered.filter(r => r.isProj && r.expKg > 0);
+    return {
+      top20Kg: [...withProj].sort((a, b) => b.achKg - a.achKg).filter(r => r.achKg > 100).slice(0, 20),
+      top20Units: [...withProj].sort((a, b) => b.achUnits - a.achUnits).filter(r => r.achUnits > 100).slice(0, 20),
+      bot20Kg: [...withProj].sort((a, b) => a.achKg - b.achKg).filter(r => r.achKg > 0 && r.achKg <= 100).slice(0, 20),
+      bot20Units: [...withProj].sort((a, b) => a.achUnits - b.achUnits).filter(r => r.achUnits > 0 && r.achUnits <= 100).slice(0, 20),
+    };
+  }, [filtered]);
+
   const cfg = data.config;
 
   return (
@@ -175,7 +190,7 @@ export default function Dashboard({ data, onReUpload }: DashboardProps) {
 
       <div className="p-4 max-w-[1920px] mx-auto">
         {/* Filters */}
-        {['dashboard', 'cfa-items', 'new-mis', 'cust-group', 'origin', 'item-name', 'zero-so', 'unproj'].includes(tab) && (
+        {['dashboard', 'cfa-items', 'new-mis', 'cust-group', 'origin', 'item-name', 'top-kg', 'top-unit', 'bot-kg', 'bot-unit', 'summary-ig', 'summary-origin', 'zero-so', 'unproj'].includes(tab) && (
           <div className="bg-white rounded-lg shadow-sm p-4 mb-4 flex gap-4 flex-wrap">
             <FilterBar label="Customer Group" options={data.filters.custGroups} selected={cgFilter} onChange={setCgFilter} />
             <FilterBar label="Origin" options={data.filters.origins} selected={originFilter} onChange={setOriginFilter} />
@@ -213,12 +228,12 @@ export default function Dashboard({ data, onReUpload }: DashboardProps) {
         {tab === 'cust-group' && <GroupedView rows={filtered} groupBy="custGroup" subGroupBy="customer" />}
         {tab === 'origin' && <GroupedView rows={filtered} groupBy="origin" />}
         {tab === 'item-name' && <GroupedView rows={filtered} groupBy="itemName" subGroupBy="customer" />}
-        {tab === 'top-kg' && <Leaderboard data={data.top20Kg} title="Top 20 Exceeding — KGs" subtitle="SKUs where SO exceeds projection pace — procurement action needed" />}
-        {tab === 'top-unit' && <Leaderboard data={data.top20Units} title="Top 20 Exceeding — Units" subtitle="SKUs where SO exceeds projection pace by unit count" />}
-        {tab === 'bot-kg' && <Leaderboard data={data.bot20Kg} title="Bottom 20 Lagging — KGs" subtitle="SKUs with lowest SO achievement — demand visibility needed" />}
-        {tab === 'bot-unit' && <Leaderboard data={data.bot20Units} title="Bottom 20 Lagging — Units" subtitle="SKUs with lowest SO achievement by unit count" />}
-        {tab === 'summary-ig' && <SummaryChart data={data.summaryIG} title="Summary by Item Group" />}
-        {tab === 'summary-origin' && <SummaryChart data={data.summaryOrigin} title="Summary by Origin" />}
+        {tab === 'top-kg' && <Leaderboard data={dynLeaderboards.top20Kg} title="Top 20 Exceeding — KGs" subtitle="SKUs where SO exceeds projection pace — procurement action needed" />}
+        {tab === 'top-unit' && <Leaderboard data={dynLeaderboards.top20Units} title="Top 20 Exceeding — Units" subtitle="SKUs where SO exceeds projection pace by unit count" />}
+        {tab === 'bot-kg' && <Leaderboard data={dynLeaderboards.bot20Kg} title="Bottom 20 Lagging — KGs" subtitle="SKUs with lowest SO achievement — demand visibility needed" />}
+        {tab === 'bot-unit' && <Leaderboard data={dynLeaderboards.bot20Units} title="Bottom 20 Lagging — Units" subtitle="SKUs with lowest SO achievement by unit count" />}
+        {tab === 'summary-ig' && <SummaryChart data={dynSummaryIG} title="Summary by Item Group" />}
+        {tab === 'summary-origin' && <SummaryChart data={dynSummaryOrigin} title="Summary by Origin" />}
         {tab === 'zero-so' && (
           <div>
             <h3 className="text-sm font-bold text-brand-900 mb-2">Projected Items with Zero Sales Orders ({filtered.filter(r => r.isProj && r.soKg === 0 && r.soUnits === 0 && r.projKg > 0).length} items)</h3>

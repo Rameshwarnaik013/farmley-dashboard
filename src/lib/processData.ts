@@ -39,7 +39,7 @@ function cleanSO(rows: RawRow[]): RawRow[] {
   });
 }
 
-function aggGroup(rows: Row[], groupKey: keyof Row): Summary[] {
+export function aggGroup(rows: Row[], groupKey: keyof Row): Summary[] {
   const map: Record<string, Summary> = {};
   rows.forEach(r => {
     const g = (r[groupKey] as string) || 'Unknown';
