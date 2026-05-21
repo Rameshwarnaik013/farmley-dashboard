@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { DashData, Row } from '@/lib/helpers';
 import StatsCards from './StatsCards';
 import FilterBar from './FilterBar';
@@ -86,26 +86,19 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'unproj', label: 'Unprojected SO' },
 ];
 
-export default function Dashboard() {
-  const [data, setData] = useState<DashData | null>(null);
+interface DashboardProps {
+  data: DashData;
+  onReUpload: () => void;
+}
+
+export default function Dashboard({ data, onReUpload }: DashboardProps) {
   const [tab, setTab] = useState<Tab>('dashboard');
   const [search, setSearch] = useState('');
-  const [cgFilter, setCgFilter] = useState<Set<string>>(new Set());
-  const [originFilter, setOriginFilter] = useState<Set<string>>(new Set());
-  const [igFilter, setIgFilter] = useState<Set<string>>(new Set());
+  const [cgFilter, setCgFilter] = useState<Set<string>>(() => new Set(data.filters.custGroups.filter(c => c !== 'Inter Company')));
+  const [originFilter, setOriginFilter] = useState<Set<string>>(() => new Set(data.filters.origins));
+  const [igFilter, setIgFilter] = useState<Set<string>>(() => new Set(data.filters.itemGroups));
   const searchTimer = useRef<ReturnType<typeof setTimeout>>();
   const [debouncedSearch, setDebouncedSearch] = useState('');
-
-  useEffect(() => {
-    fetch('/data.json')
-      .then(r => r.json())
-      .then((d: DashData) => {
-        setData(d);
-        setCgFilter(new Set(d.filters.custGroups.filter(c => c !== 'Inter Company')));
-        setOriginFilter(new Set(d.filters.origins));
-        setIgFilter(new Set(d.filters.itemGroups));
-      });
-  }, []);
 
   const onSearch = useCallback((v: string) => {
     setSearch(v);
@@ -133,17 +126,6 @@ export default function Dashboard() {
     });
   }, [data, cgFilter, originFilter, igFilter, debouncedSearch]);
 
-  if (!data) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading dashboard data...</p>
-        </div>
-      </div>
-    );
-  }
-
   const cfg = data.config;
 
   return (
@@ -156,13 +138,13 @@ export default function Dashboard() {
           <span className="bg-white/15 px-3 py-1 rounded-full">SO: <b>{cfg.dateFrom}</b> → <b>{cfg.dateTo}</b></span>
           <span className="bg-white/15 px-3 py-1 rounded-full">Elapsed: <b>{cfg.daysElapsed}d</b></span>
           <span className="bg-white/15 px-3 py-1 rounded-full">Rows: <b>{cfg.totalRows}</b></span>
-          <a
-            href="/api/download"
+          <button
+            onClick={onReUpload}
             className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 px-4 py-1.5 rounded-full font-semibold transition-all text-[11px]"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Download Excel
-          </a>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Re-upload Files
+          </button>
         </div>
       </header>
 
