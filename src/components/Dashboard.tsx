@@ -10,7 +10,7 @@ import GroupedView from './GroupedView';
 import Leaderboard from './Leaderboard';
 import SummaryChart from './SummaryChart';
 
-type Tab = 'dashboard' | 'cfa-items' | 'new-mis' | 'cust-group' | 'origin' | 'item-name' | 'top-kg' | 'top-unit' | 'bot-kg' | 'bot-unit' | 'summary-ig' | 'summary-origin' | 'zero-so' | 'unproj' | 'data-audit';
+type Tab = 'instructions' | 'dashboard' | 'cfa-items' | 'new-mis' | 'cust-group' | 'origin' | 'item-name' | 'top-kg' | 'top-unit' | 'bot-kg' | 'bot-unit' | 'summary-ig' | 'summary-origin' | 'zero-so' | 'unproj' | 'data-audit';
 
 const CFA_ITEM_NAMES = new Set([
   'Apple Pie Date Bite Farmley sachet 20 g - Single serve',
@@ -72,6 +72,7 @@ const CFA_ITEM_NAMES = new Set([
 ]);
 
 const TABS: { id: Tab; label: string }[] = [
+  { id: 'instructions', label: 'Instructions' },
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'cfa-items', label: 'CFA Items Run Rate' },
   { id: 'new-mis', label: 'By New MIS' },
@@ -92,6 +93,211 @@ const TABS: { id: Tab; label: string }[] = [
 interface DashboardProps {
   data: DashData;
   onReUpload: () => void;
+}
+
+function InstructionsPanel({ cfg }: { cfg: DashData['config'] }) {
+  const sections = [
+    { id: 'flow', title: '1. Data Processing Flow' },
+    { id: 'inputs', title: '2. Input Files' },
+    { id: 'cleaning', title: '3. SO Data Cleaning Rules (Applied on Input 2)' },
+    { id: 'remap', title: '4. Customer Group / Customer Remapping' },
+    { id: 'join', title: '5. Join Logic (Projection vs Sales Order)' },
+    { id: 'formulas', title: '6. Column Formulas & Definitions' },
+    { id: 'colors', title: '7. Color Coding (Procurement Focus)' },
+    { id: 'filters', title: '8. Default Filters' },
+    { id: 'tabs', title: '9. Tab Descriptions' },
+    { id: 'excel', title: '10. Excel Export' },
+  ];
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(sections.map(s => s.id)));
+  const toggle = (id: string) => setOpenSections(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  const S = ({ id, title, children }: { id: string; title: string; children: React.ReactNode }) => (
+    <div className="border rounded-lg overflow-hidden">
+      <button onClick={() => toggle(id)} className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left">
+        <span className="text-sm font-bold text-brand-900">{title}</span>
+        <span className="text-gray-400 text-xs">{openSections.has(id) ? '▼' : '▶'}</span>
+      </button>
+      {openSections.has(id) && <div className="px-4 py-3 text-xs leading-relaxed text-gray-700 space-y-2">{children}</div>}
+    </div>
+  );
+
+  const tbl = "w-full text-xs border-collapse my-2";
+  const th = "text-left px-3 py-1.5 bg-gray-100 border font-semibold";
+  const td = "px-3 py-1.5 border";
+  const code = "bg-gray-100 px-1.5 py-0.5 rounded font-mono text-[11px]";
+
+  return (
+    <div className="space-y-3 max-w-5xl">
+      <div className="bg-white rounded-lg shadow-sm p-5 mb-4">
+        <h2 className="text-base font-bold text-brand-900 mb-1">Dashboard Instructions & Methodology</h2>
+        <p className="text-xs text-gray-500">Complete reference of all approaches, conditions, formulas, and logic used in this Run Rate Dashboard.</p>
+        <p className="text-xs text-gray-400 mt-1">Current config: Days in Month = <b>{cfg.daysInMonth}</b> | Days Elapsed = <b>{cfg.daysElapsed}</b> | SO Date Range: {cfg.dateFrom} to {cfg.dateTo}</p>
+      </div>
+
+      <S id="flow" title="1. Data Processing Flow">
+        <div className="bg-white rounded p-3 border text-[11px] font-mono leading-6">
+          <p>Upload Projection Excel (Input 1) + Sales Order Excel (Input 2) + Days in Month</p>
+          <p className="text-gray-400 my-1">{'  ↓'}</p>
+          <p>Apply 9 Cleaning Rules on SO data (remove invalid rows)</p>
+          <p className="text-gray-400 my-1">{'  ↓'}</p>
+          <p>Apply Customer Group / Customer Remapping (both files)</p>
+          <p className="text-gray-400 my-1">{'  ↓'}</p>
+          <p>Detect Date Range: 1st of month to max(Sales Order Date) → Days Elapsed = day of max date</p>
+          <p className="text-gray-400 my-1">{'  ↓'}</p>
+          <p>Build SO Lookup: GROUP BY (Customer Group, Customer, Origin, Item Code) → SUM(Stock Qty), SUM(Qty)</p>
+          <p className="text-gray-400 my-1">{'  ↓'}</p>
+          <p>OUTER JOIN Projection rows with SO Lookup on (Customer Group, Customer, Origin, Item Code)</p>
+          <p className="text-gray-400 my-1">{'  ↓'}</p>
+          <p>Compute derived columns: Expected, MTD Ach%, SO vs Proj%, Days Left, Run Rate, etc.</p>
+          <p className="text-gray-400 my-1">{'  ↓'}</p>
+          <p>Add Unprojected SO items (SO entries with no matching Projection row)</p>
+          <p className="text-gray-400 my-1">{'  ↓'}</p>
+          <p>Render Dashboard with filters, grouped views, summaries, leaderboards</p>
+        </div>
+        <p className="text-gray-500 mt-2">All processing happens entirely in the browser. No data is sent to any server.</p>
+      </S>
+
+      <S id="inputs" title="2. Input Files">
+        <table className={tbl}>
+          <thead><tr><th className={th}>Input</th><th className={th}>Description</th><th className={th}>Key Columns Used</th></tr></thead>
+          <tbody>
+            <tr><td className={td}><b>Input 1: Projection</b></td><td className={td}>Monthly projection/target data per SKU per customer</td><td className={td}>Customer Group, Customer, Origin, Item Code, Item Name, Total KGs, Projection Units, Item Group, Month, Year</td></tr>
+            <tr><td className={td}><b>Input 2: Sales Order</b></td><td className={td}>Actual sales order line items for the month</td><td className={td}>Customer Group, Customer, Origin, Item Code, Item Name, Stock Qty (KGs), Qty (Units), Sales Order Date, Workflow State, Sales Order Status, Sales Order Created By, Purpose, Item Type, Returned Qty, NEW MIS ITEM GROUP</td></tr>
+            <tr><td className={td}><b>Days in Month</b></td><td className={td}>Working days in the current month (user input)</td><td className={td}>Used as denominator for daily demand and expected calculations</td></tr>
+          </tbody>
+        </table>
+      </S>
+
+      <S id="cleaning" title="3. SO Data Cleaning Rules (Applied on Input 2)">
+        <p className="mb-2">These 9 rules are applied <b>sequentially</b> on the raw Sales Order data. A row is removed on the <b>first matching rule</b> (no double-counting).</p>
+        <table className={tbl}>
+          <thead><tr><th className={th}>#</th><th className={th}>Rule</th><th className={th}>Condition</th></tr></thead>
+          <tbody>
+            <tr><td className={td}>1</td><td className={td}>Remove Administrator rows</td><td className={td}><span className={code}>Sales Order Created By == &quot;Administrator&quot;</span></td></tr>
+            <tr><td className={td}>2</td><td className={td}>Remove invalid Internal Transfer (WF State)</td><td className={td}><span className={code}>Workflow State == &quot;Internal Transfer&quot;</span> AND creator NOT in [ashish.k@farmley.com, abhishek.ku@farmley.com]</td></tr>
+            <tr><td className={td}>3</td><td className={td}>Remove On Hold / Rejected / Cancelled (WF State)</td><td className={td}><span className={code}>Workflow State IN (&quot;On Hold&quot;, &quot;Rejected&quot;, &quot;Cancelled&quot;)</span></td></tr>
+            <tr><td className={td}>4</td><td className={td}>Remove Documentation purpose</td><td className={td}><span className={code}>Purpose == &quot;Documentation&quot;</span></td></tr>
+            <tr><td className={td}>5</td><td className={td}>Remove Cancelled / On Hold / Rejected (SO Status)</td><td className={td}><span className={code}>Sales Order Status IN (&quot;Cancelled&quot;, &quot;On Hold&quot;, &quot;Rejected&quot;)</span></td></tr>
+            <tr><td className={td}>6</td><td className={td}>Remove invalid Internal Transfer (SO Status)</td><td className={td}><span className={code}>Sales Order Status == &quot;Internal Transfer&quot;</span> AND creator NOT in valid list</td></tr>
+            <tr><td className={td}>7</td><td className={td}>Remove Sample Orders</td><td className={td}><span className={code}>Customer STARTS WITH &quot;Sample Order&quot;</span></td></tr>
+            <tr><td className={td}>8</td><td className={td}>Remove Bulk items</td><td className={td}><span className={code}>Item Type == &quot;Bulk&quot;</span></td></tr>
+            <tr><td className={td}>9</td><td className={td}>Remove high-return rows</td><td className={td}><span className={code}>Returned Qty &gt; 1</span></td></tr>
+          </tbody>
+        </table>
+        <p className="text-gray-500 mt-1">See the <b>Data Audit</b> tab for per-rule removal stats on your current data.</p>
+      </S>
+
+      <S id="remap" title="4. Customer Group / Customer Remapping">
+        <p className="mb-2">Applied to <b>both Projection and SO data</b> before the join, ensuring consistent keys.</p>
+        <table className={tbl}>
+          <thead><tr><th className={th}>#</th><th className={th}>Condition</th><th className={th}>Action</th></tr></thead>
+          <tbody>
+            <tr><td className={td}>1</td><td className={td}>Customer Group = &quot;Category A&quot; AND Customer = &quot;Jhabak Marketing&quot;</td><td className={td}>Change Customer Group to <b>&quot;Modern Trade&quot;</b></td></tr>
+            <tr><td className={td}>2</td><td className={td}>Customer Group = &quot;Category A&quot; AND Customer = any other</td><td className={td}>Change Customer to <b>&quot;GT Retail&quot;</b></td></tr>
+            <tr><td className={td}>3</td><td className={td}>Customer Group = &quot;CPC KPKB&quot;</td><td className={td}>Change Customer to <b>&quot;CPC KPKB&quot;</b></td></tr>
+            <tr><td className={td}>4</td><td className={td}>Customer Group = &quot;Quick Commerce&quot; AND Customer IN (Moksh Enterprises, PJTJ Technologies, Cloudkart Ventures, Jupiter Kart, Cloudstore Retail)</td><td className={td}>Change Customer to <b>&quot;Instamart&quot;</b></td></tr>
+          </tbody>
+        </table>
+      </S>
+
+      <S id="join" title="5. Join Logic (Projection vs Sales Order)">
+        <p><b>Join Key:</b> <span className={code}>(Customer Group, Customer, Origin, Item Code)</span></p>
+        <p className="mt-2"><b>SO Aggregation:</b> Before joining, SO data is grouped by the join key with <span className={code}>SUM(Stock Qty)</span> for SO KGs and <span className={code}>SUM(Qty)</span> for SO Units.</p>
+        <p className="mt-2"><b>OUTER JOIN:</b></p>
+        <ul className="list-disc pl-5 space-y-1 mt-1">
+          <li><b>Projected rows:</b> Each Projection row is enriched with SO KGs/Units from the matching SO group. If no SO match exists, SO KGs = 0.</li>
+          <li><b>Unprojected rows:</b> SO groups with no matching Projection row are added as separate rows (Proj KGs = 0, marked as &quot;Unprojected&quot;).</li>
+        </ul>
+        <p className="mt-2"><b>Days Elapsed:</b> Automatically derived as the day-of-month of <span className={code}>MAX(Sales Order Date)</span>. Current value = <b>{cfg.daysElapsed}</b></p>
+      </S>
+
+      <S id="formulas" title="6. Column Formulas & Definitions">
+        <table className={tbl}>
+          <thead><tr><th className={th}>Column</th><th className={th}>Formula / Definition</th></tr></thead>
+          <tbody>
+            <tr><td className={td}><b>Proj KGs</b></td><td className={td}>Total KGs from Projection file (monthly target)</td></tr>
+            <tr><td className={td}><b>SO KGs</b></td><td className={td}>SUM(Stock Qty) from SO data grouped by join key</td></tr>
+            <tr><td className={td}><b>Proj Units</b></td><td className={td}>Projection Units from Projection file</td></tr>
+            <tr><td className={td}><b>Exp SO Units</b></td><td className={td}><span className={code}>(Proj Units / Days in Month) x Days Elapsed</span></td></tr>
+            <tr><td className={td}><b>Exp KGs</b></td><td className={td}><span className={code}>(Proj KGs / Days in Month) x Days Elapsed</span></td></tr>
+            <tr><td className={td}><b>SO Units</b></td><td className={td}>SUM(Qty) from SO data grouped by join key</td></tr>
+            <tr><td className={td}><b>MTD Ach%</b></td><td className={td}><span className={code}>SO KGs / Exp KGs x 100</span> — Month-to-date achievement (expected projection vs actual SO)</td></tr>
+            <tr><td className={td}><b>SO vs Proj%</b></td><td className={td}><span className={code}>SO KGs / Proj KGs x 100</span> — How much of full-month projection is already covered</td></tr>
+            <tr><td className={td}><b>% SO Left</b></td><td className={td}><span className={code}>100 - SO vs Proj%</span> — Remaining percentage of projection to be fulfilled</td></tr>
+            <tr><td className={td}><b>SO%/Day</b></td><td className={td}><span className={code}>SO vs Proj% / Days Elapsed</span> — Average projection coverage per day</td></tr>
+            <tr><td className={td}><b>Days Left</b></td><td className={td}><span className={code}>% SO Left / SO%/Day</span> — Estimated days needed to cover remaining projection at current pace</td></tr>
+            <tr><td className={td}><b>Diff KGs</b></td><td className={td}><span className={code}>Exp KGs - SO KGs</span> — Positive = under-ordered, Negative = over-ordered</td></tr>
+            <tr><td className={td}><b>Diff Units</b></td><td className={td}><span className={code}>Exp SO Units - SO Units</span></td></tr>
+            <tr><td className={td}><b>RunRate KGs</b></td><td className={td}><span className={code}>(SO KGs / Days Elapsed) x Days in Month</span> — Projected full-month SO at current pace</td></tr>
+            <tr><td className={td}><b>RunRate Units</b></td><td className={td}><span className={code}>(SO Units / Days Elapsed) x Days in Month</span></td></tr>
+          </tbody>
+        </table>
+      </S>
+
+      <S id="colors" title="7. Color Coding (Procurement Focus)">
+        <p className="mb-2">Colors indicate procurement urgency. <b>RED = SO exceeding projection</b> (need to arrange more stock).</p>
+        <table className={tbl}>
+          <thead><tr><th className={th}>Color</th><th className={th}>MTD Ach% Range</th><th className={th}>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td className={td}><span className="inline-block w-4 h-4 rounded bg-[#c00000] align-middle mr-2"></span> Dark Red</td><td className={td}>&gt; 120%</td><td className={td}>Urgent — SO far exceeds projection pace, immediate procurement action needed</td></tr>
+            <tr><td className={td}><span className="inline-block w-4 h-4 rounded bg-[#ff0000] align-middle mr-2"></span> Red</td><td className={td}>100% - 120%</td><td className={td}>Exceeding — SO ahead of projection, monitor closely</td></tr>
+            <tr><td className={td}><span className="inline-block w-4 h-4 rounded bg-[#ffc000] align-middle mr-2"></span> Orange</td><td className={td}>80% - 100%</td><td className={td}>Watch — On track but nearing projection</td></tr>
+            <tr><td className={td}><span className="inline-block w-4 h-4 rounded bg-[#92d050] align-middle mr-2"></span> Light Green</td><td className={td}>50% - 80%</td><td className={td}>Comfortable — SO below expected pace</td></tr>
+            <tr><td className={td}><span className="inline-block w-4 h-4 rounded bg-[#00b050] align-middle mr-2"></span> Dark Green</td><td className={td}>&lt; 50%</td><td className={td}>Low — SO significantly below expected pace</td></tr>
+            <tr><td className={td}><span className="inline-block w-4 h-4 rounded bg-[#d9d9d9] align-middle mr-2"></span> Grey</td><td className={td}>0% / No SO</td><td className={td}>No sales orders received yet</td></tr>
+          </tbody>
+        </table>
+      </S>
+
+      <S id="filters" title="8. Default Filters">
+        <ul className="list-disc pl-5 space-y-1">
+          <li><b>Customer Group:</b> All selected EXCEPT &quot;Inter Company&quot; (unchecked by default). Toggle it on to include inter-company transfers.</li>
+          <li><b>Origin:</b> All selected by default.</li>
+          <li><b>Item Group:</b> All selected by default.</li>
+          <li>Filters apply to all tabs except Data Audit. Summary charts and leaderboards are dynamically recomputed based on active filters.</li>
+          <li>Search (300ms debounce) filters by Item Name, Item Code, Customer, Customer Group, and New MIS.</li>
+        </ul>
+      </S>
+
+      <S id="tabs" title="9. Tab Descriptions">
+        <table className={tbl}>
+          <thead><tr><th className={th}>Tab</th><th className={th}>Description</th></tr></thead>
+          <tbody>
+            <tr><td className={td}><b>Dashboard</b></td><td className={td}>Flat table of all rows with all columns. Sortable by any column. Paginated (50 rows/page).</td></tr>
+            <tr><td className={td}><b>CFA Items Run Rate</b></td><td className={td}>Grouped by Item Name → Customer sub-toggle. Filtered to 56 specific CFA item names only.</td></tr>
+            <tr><td className={td}><b>By New MIS</b></td><td className={td}>Grouped by NEW MIS ITEM GROUP. Expandable to see individual items.</td></tr>
+            <tr><td className={td}><b>By Customer Group</b></td><td className={td}>Grouped by Customer Group → Customer sub-toggle. Shows aggregated metrics per group.</td></tr>
+            <tr><td className={td}><b>By Origin</b></td><td className={td}>Grouped by Origin. Expandable to individual items.</td></tr>
+            <tr><td className={td}><b>By Item Name</b></td><td className={td}>Grouped by Item Name → Customer sub-toggle. Shows per-item SO split by customer.</td></tr>
+            <tr><td className={td}><b>Top 20 (KGs/Units)</b></td><td className={td}>Items where MTD Ach% &gt; 100% — SO exceeding projection. Sorted highest first.</td></tr>
+            <tr><td className={td}><b>Bottom 20 (KGs/Units)</b></td><td className={td}>Items where 0 &lt; MTD Ach% &le; 100% — lowest achievement. Sorted lowest first.</td></tr>
+            <tr><td className={td}><b>Summary: Item Group / Origin</b></td><td className={td}>Bar charts with aggregated Proj vs Exp vs SO KGs by Item Group or Origin.</td></tr>
+            <tr><td className={td}><b>Zero SO</b></td><td className={td}>Projected items with zero sales orders (Proj KGs &gt; 0 but SO KGs = 0).</td></tr>
+            <tr><td className={td}><b>Unprojected SO</b></td><td className={td}>SO items with no matching Projection row (unexpected demand).</td></tr>
+            <tr><td className={td}><b>Data Audit</b></td><td className={td}>Cleaning rules report + per-item unfiltered vs filtered SO KGs comparison.</td></tr>
+          </tbody>
+        </table>
+      </S>
+
+      <S id="excel" title="10. Excel Export">
+        <p>The <b>Download Excel</b> button generates a multi-sheet workbook entirely in the browser:</p>
+        <ul className="list-disc pl-5 space-y-1 mt-2">
+          <li><b>Config sheet:</b> Days in Month (B4), Days Elapsed (B7) — referenced by all formula cells.</li>
+          <li><b>Dashboard sheet:</b> All rows with formula cells for Exp KGs, MTD Ach%, SO vs Proj%, Days Left, Diff, RunRate etc.</li>
+          <li><b>Grouped sheets</b> (By New MIS, By Customer Group, By Origin, By Item Name): Pivot-style with parent SUM formulas, row outlines, and expandable groups.</li>
+          <li><b>CFA Items sheet:</b> Filtered to 56 CFA items with formulas and TOTAL row.</li>
+          <li><b>Summary sheets</b> (Item Group, Origin): Aggregated with TOTAL row and Ach% formulas.</li>
+          <li><b>Leaderboard sheets</b> (Top/Bottom 20 KGs/Units): Ranked lists with formulas.</li>
+          <li><b>Zero SO / Unprojected SO sheets:</b> Static value sheets.</li>
+          <li>All percentage columns formatted as <span className={code}>0.0%</span>. Change Days in Month or Days Elapsed in Config sheet to recalculate all formulas.</li>
+        </ul>
+      </S>
+    </div>
+  );
 }
 
 function DataAudit({ data, filtered }: { data: DashData; filtered: Row[] }) {
@@ -333,6 +539,7 @@ export default function Dashboard({ data, onReUpload }: DashboardProps) {
         )}
 
         {/* Tab Content */}
+        {tab === 'instructions' && <InstructionsPanel cfg={cfg} />}
         {tab === 'dashboard' && <DataTable data={filtered} />}
         {tab === 'cfa-items' && <GroupedView rows={filtered.filter(r => CFA_ITEM_NAMES.has(r.itemName))} groupBy="itemName" subGroupBy="customer" daysElapsed={cfg.daysElapsed} />}
         {tab === 'new-mis' && <GroupedView rows={filtered} groupBy="newMIS" daysElapsed={cfg.daysElapsed} />}
