@@ -9,6 +9,22 @@ function colLetter(n: number): string {
   return s;
 }
 
+// aoa_to_sheet does NOT support {f:"..."} formula objects — they become empty cells.
+// This helper walks the aoa AFTER sheet creation and patches formula cells onto the worksheet.
+function applyFormulas(ws: XLSX.WorkSheet, aoa: unknown[][]) {
+  for (let r = 0; r < aoa.length; r++) {
+    const row = aoa[r];
+    if (!row) continue;
+    for (let c = 0; c < row.length; c++) {
+      const v = row[c];
+      if (v && typeof v === 'object' && 'f' in v) {
+        const addr = colLetter(c) + (r + 1);
+        ws[addr] = { t: 'n', f: (v as { f: string }).f };
+      }
+    }
+  }
+}
+
 function applyHeaderStyle(ws: XLSX.WorkSheet, cols: number, row: number) {
   for (let c = 0; c < cols; c++) {
     const addr = colLetter(c) + row;
@@ -79,6 +95,7 @@ function writeDashboardSheet(wb: XLSX.WorkBook, data: DashData) {
   });
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
+  applyFormulas(ws, aoa);
   const pctCols = ['N', 'O', 'P', 'Q'];
   for (let i = 0; i < data.rows.length; i++) {
     const row = i + 2;
@@ -242,6 +259,7 @@ function writeGroupedSheet(
   });
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
+  applyFormulas(ws, aoa);
 
   // Format percentage columns K, L, M, N (indices 10-13)
   const pctGroupCols = ['K', 'L', 'M', 'N'];
@@ -312,6 +330,7 @@ function writeSummarySheet(wb: XLSX.WorkBook, summaries: Summary[], sheetName: s
   ]);
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
+  applyFormulas(ws, aoa);
   const pctSumCols = ['H', 'I', 'J'];
   for (let i = 1; i <= summaries.length + 1; i++) {
     const row = i + 1;
@@ -359,6 +378,7 @@ function writeLeaderboardSheet(wb: XLSX.WorkBook, rows: Row[], sheetName: string
   });
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
+  applyFormulas(ws, aoa);
   const pctLBCols = ['J', 'K', 'L', 'M'];
   for (let i = 0; i < rows.length; i++) {
     const row = i + 2;
@@ -455,6 +475,7 @@ function writeCFASheet(wb: XLSX.WorkBook, data: DashData, cfaNames: Set<string>)
   totalArr[8] = { f: `IF(${DIM}=0,0,(E${totalRow}/${DIM})*${DE})` };
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
+  applyFormulas(ws, aoa);
   const pctCFACols = ['K', 'L', 'M', 'N'];
   for (let i = 1; i < aoa.length; i++) {
     const row = i + 1;
