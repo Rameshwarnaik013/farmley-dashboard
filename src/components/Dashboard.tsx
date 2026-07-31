@@ -213,6 +213,7 @@ function InstructionsPanel({ cfg }: { cfg: DashData['config'] }) {
           <li><b>Projected rows:</b> Each Projection row is enriched with SO KGs/Units from the matching SO group. If no SO match exists, SO KGs = 0.</li>
           <li><b>Unprojected rows:</b> SO groups with no matching Projection row are added as separate rows (Proj KGs = 0, marked as &quot;Unprojected&quot;).</li>
         </ul>
+        <p className="mt-2"><b>Item Group / New MIS:</b> <span className={code}>NEW MIS ITEM GROUP</span> in the SO file and <span className={code}>Item Group</span> in the Projection file are the same taxonomy, so they are treated as one dimension. Projected rows take Item Group from the Projection file; SO-only rows take it from <span className={code}>NEW MIS ITEM GROUP</span>. The SO file&apos;s own <span className={code}>Item Group</span> column (a coarser list — &quot;Dry Fruit Mix&quot;, &quot;Desserts&quot;, &quot;Makhana&quot;) is <b>not</b> used, so a single vocabulary applies across projected and unprojected rows.</p>
         <p className="mt-2"><b>Days Elapsed:</b> Automatically derived as the day-of-month of <span className={code}>MAX(Sales Order Date)</span>. Current value = <b>{cfg.daysElapsed}</b></p>
       </S>
 

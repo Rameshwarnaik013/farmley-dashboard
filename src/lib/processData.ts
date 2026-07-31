@@ -224,7 +224,9 @@ export function processExcelFiles(projBuffer: ArrayBuffer, soBuffer: ArrayBuffer
       custGroup: cg,
       origin: origin,
       itemType: str(r['Item Type']),
-      newMIS: so.newMIS || soItemMIS[ic] || '',
+      // NEW MIS ITEM GROUP (SO) is the same taxonomy as Item Group (Projection),
+      // so fall back to the projection's own Item Group when SO carries no MIS value.
+      newMIS: so.newMIS || soItemMIS[ic] || str(r['Item Group']),
       dailyKg: round2(dailyKg),
       dailyUnits: round2(dailyUnits),
       expKg: round2(expKg),
@@ -254,7 +256,10 @@ export function processExcelFiles(projBuffer: ArrayBuffer, soBuffer: ArrayBuffer
       month: '', year: '', lastModDate: '', lastModTime: '',
       itemCode: ic,
       bomType: '',
-      itemGroup: so.itemGroup,
+      // Use NEW MIS ITEM GROUP as the Item Group for SO-only rows. The SO file's own
+      // 'Item Group' column is a coarser, different taxonomy (e.g. "Dry Fruit Mix",
+      // "Desserts") and would otherwise mix two vocabularies into one dimension.
+      itemGroup: so.newMIS || soItemMIS[ic] || so.itemGroup,
       itemName: so.itemName,
       itemParent: so.itemParent,
       convFactor: so.convFactor,
