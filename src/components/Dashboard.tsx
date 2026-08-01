@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, Fragment } from 'react';
 import { DashData, Row, fmt } from '@/lib/helpers';
 import { exportDashboardExcel } from '@/lib/exportExcel';
 import { aggGroup } from '@/lib/processData';
@@ -301,22 +301,70 @@ function InstructionsPanel({ cfg }: { cfg: DashData['config'] }) {
   );
 }
 
+type AchSortKey = 'projKg' | 'soKg' | 'achKg' | 'soVsProj' | 'diffKg';
+
+interface AchItemGroup {
+  name: string;
+  rows: Row[];
+  projKg: number; soKg: number; expKg: number;
+  achKg: number; soVsProj: number; diffKg: number;
+}
+
 function AchAbove100Table({ rows }: { rows: Row[] }) {
   const [expanded, setExpanded] = useState(false);
-  type SortKey = 'projKg' | 'soKg' | 'achKg' | 'soVsProj' | 'diffKg';
-  const [sortCol, setSortCol] = useState<SortKey | null>('achKg');
+  const [openItems, setOpenItems] = useState<Set<string>>(new Set());
+  const [sortCol, setSortCol] = useState<AchSortKey | null>('achKg');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
+  // Group the same >100% rows by Item Name so each item can be opened into its
+  // customer-wise split. Row selection is untouched — only the presentation.
+  const groups = useMemo((): AchItemGroup[] => {
+    const map = new Map<string, Row[]>();
+    rows.forEach(r => {
+      const k = r.itemName || r.itemCode || 'Unknown';
+      const arr = map.get(k);
+      if (arr) arr.push(r); else map.set(k, [r]);
+    });
+    return [...map.entries()].map(([name, rs]) => {
+      const projKg = rs.reduce((s, r) => s + r.projKg, 0);
+      const soKg = rs.reduce((s, r) => s + r.soKg, 0);
+      const expKg = rs.reduce((s, r) => s + r.expKg, 0);
+      return {
+        name, rows: rs, projKg, soKg, expKg,
+        achKg: expKg > 0 ? (soKg / expKg) * 100 : 0,
+        soVsProj: projKg > 0 ? (soKg / projKg) * 100 : 0,
+        diffKg: expKg - soKg,
+      };
+    });
+  }, [rows]);
+
   const sorted = useMemo(() => {
-    if (!sortCol) return rows;
-    return [...rows].sort((a, b) => {
+    if (!sortCol) return groups;
+    return [...groups].sort((a, b) => {
+      const va = a[sortCol];
+      const vb = b[sortCol];
+      return sortDir === 'desc' ? vb - va : va - vb;
+    });
+  }, [groups, sortCol, sortDir]);
+
+  const sortRows = useCallback((rs: Row[]) => {
+    if (!sortCol) return rs;
+    return [...rs].sort((a, b) => {
       const va = a[sortCol] as number;
       const vb = b[sortCol] as number;
       return sortDir === 'desc' ? vb - va : va - vb;
     });
-  }, [rows, sortCol, sortDir]);
+  }, [sortCol, sortDir]);
 
-  const toggleSort = (col: SortKey) => {
+  const toggleItem = (name: string) => setOpenItems(prev => {
+    const next = new Set(prev);
+    if (next.has(name)) next.delete(name); else next.add(name);
+    return next;
+  });
+  const expandAllItems = () => setOpenItems(new Set(groups.map(g => g.name)));
+  const collapseAllItems = () => setOpenItems(new Set());
+
+  const toggleSort = (col: AchSortKey) => {
     if (sortCol === col) setSortDir(d => d === 'desc' ? 'asc' : 'desc');
     else { setSortCol(col); setSortDir('desc'); }
   };
@@ -326,8 +374,11 @@ function AchAbove100Table({ rows }: { rows: Row[] }) {
     <div>
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h3 className="text-sm font-bold text-brand-900">
-          MTD Ach% &gt; 100% — {rows.length} items
+          MTD Ach% &gt; 100% — {groups.length} items / {rows.length} customer rows
         </h3>
+        <div className="flex items-center gap-1.5">
+        <button onClick={expandAllItems} className="text-[10px] px-3 py-1.5 border rounded-md hover:bg-gray-100 bg-white shadow-sm">Expand All</button>
+        <button onClick={collapseAllItems} className="text-[10px] px-3 py-1.5 border rounded-md hover:bg-gray-100 bg-white shadow-sm">Collapse All</button>
         <button
           onClick={() => setExpanded(e => !e)}
           className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg border shadow-sm transition-all ${
@@ -344,6 +395,7 @@ function AchAbove100Table({ rows }: { rows: Row[] }) {
           </svg>
           {expanded ? 'Compact View' : 'Full View (Screenshot)'}
         </button>
+        </div>
       </div>
 
       <div className={`bg-white rounded-lg shadow-sm overflow-auto scrollbar-thin ${expanded ? '' : 'max-h-[calc(100vh-340px)]'}`}>
@@ -371,22 +423,50 @@ function AchAbove100Table({ rows }: { rows: Row[] }) {
             </tr>
           </thead>
           <tbody>
-            {sorted.map((r, i) => (
-              <tr key={`${r.itemCode}-${r.customer}-${r.origin}-${i}`} className="border-b border-gray-100 hover:bg-blue-50/40 even:bg-gray-50/50">
-                <td className="px-2 py-1.5 text-center font-bold text-gray-400">{i + 1}</td>
-                <td className="px-2 py-1.5 max-w-[280px] truncate">{r.itemName}</td>
-                <td className="px-2 py-1.5 text-right">{fmt(r.projKg)}</td>
-                <td className="px-2 py-1.5 text-right">{fmt(r.soKg)}</td>
-                <td className="px-2 py-1.5 text-right">{fmt(r.expKg)}</td>
-                <td className="px-2 py-1.5 text-center">
-                  <span className={`px-2 py-0.5 rounded text-xs font-semibold ${r.achKg > 120 ? 'bg-[#c00000] text-white' : 'bg-[#ff0000] text-white'}`}>
-                    {r.achKg.toFixed(1)}%
-                  </span>
-                </td>
-                <td className="px-2 py-1.5 text-center">{r.projKg > 0 ? r.soVsProj.toFixed(1) + '%' : '-'}</td>
-                <td className={`px-2 py-1.5 text-right font-semibold ${r.diffKg < 0 ? 'text-red-700' : 'text-green-700'}`}>{fmt(r.diffKg)}</td>
-              </tr>
-            ))}
+            {sorted.map((g, i) => {
+              const isOpen = expanded || openItems.has(g.name);
+              return (
+                <Fragment key={g.name}>
+                  <tr onClick={() => toggleItem(g.name)} className="border-b border-gray-100 hover:bg-blue-50/40 even:bg-gray-50/50 cursor-pointer">
+                    <td className="px-2 py-1.5 text-center font-bold text-gray-400">{i + 1}</td>
+                    <td className="px-2 py-1.5 max-w-[280px]">
+                      <span className="text-brand-700 font-bold mr-1.5">{isOpen ? '▼' : '▶'}</span>
+                      <span className="truncate">{g.name}</span>
+                      <span className="ml-2 text-[9px] text-gray-400">({g.rows.length} {g.rows.length === 1 ? 'customer' : 'customers'})</span>
+                    </td>
+                    <td className="px-2 py-1.5 text-right">{fmt(g.projKg)}</td>
+                    <td className="px-2 py-1.5 text-right">{fmt(g.soKg)}</td>
+                    <td className="px-2 py-1.5 text-right">{fmt(g.expKg)}</td>
+                    <td className="px-2 py-1.5 text-center">
+                      <span className={`px-2 py-0.5 rounded text-xs font-semibold ${g.achKg > 120 ? 'bg-[#c00000] text-white' : 'bg-[#ff0000] text-white'}`}>
+                        {g.achKg.toFixed(1)}%
+                      </span>
+                    </td>
+                    <td className="px-2 py-1.5 text-center">{g.projKg > 0 ? g.soVsProj.toFixed(1) + '%' : '-'}</td>
+                    <td className={`px-2 py-1.5 text-right font-semibold ${g.diffKg < 0 ? 'text-red-700' : 'text-green-700'}`}>{fmt(g.diffKg)}</td>
+                  </tr>
+                  {isOpen && sortRows(g.rows).map((r, j) => (
+                    <tr key={`${g.name}-${r.custGroup}-${r.customer}-${r.origin}-${r.itemCode}-${j}`} className="border-b border-gray-50 bg-blue-50/20 hover:bg-yellow-50/50 text-[10px]">
+                      <td className="px-2 py-1"></td>
+                      <td className="px-2 py-1 pl-8 max-w-[280px] truncate">
+                        <span className="font-medium text-gray-800">{r.customer || 'Unknown'}</span>
+                        <span className="text-gray-400 ml-2">{r.custGroup}{r.origin ? ` · ${r.origin}` : ''}</span>
+                      </td>
+                      <td className="px-2 py-1 text-right">{fmt(r.projKg)}</td>
+                      <td className="px-2 py-1 text-right">{fmt(r.soKg)}</td>
+                      <td className="px-2 py-1 text-right">{fmt(r.expKg)}</td>
+                      <td className="px-2 py-1 text-center">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${r.achKg > 120 ? 'bg-[#c00000] text-white' : 'bg-[#ff0000] text-white'}`}>
+                          {r.achKg.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="px-2 py-1 text-center">{r.projKg > 0 ? r.soVsProj.toFixed(1) + '%' : '-'}</td>
+                      <td className={`px-2 py-1 text-right font-semibold ${r.diffKg < 0 ? 'text-red-700' : 'text-green-700'}`}>{fmt(r.diffKg)}</td>
+                    </tr>
+                  ))}
+                </Fragment>
+              );
+            })}
             {sorted.length === 0 && (
               <tr><td colSpan={8} className="text-center py-8 text-gray-400">No items with MTD Ach% &gt; 100%</td></tr>
             )}
@@ -395,7 +475,7 @@ function AchAbove100Table({ rows }: { rows: Row[] }) {
       </div>
 
       <div className="mt-2 text-[10px] text-gray-400">
-        {expanded ? '📸 Full view — all rows visible for screenshot' : `${rows.length} rows | Scroll to view all`}
+        {expanded ? '📸 Full view — all items expanded to their customer split for screenshot' : `${groups.length} items | ${rows.length} customer rows | Click an item to see its customer-wise breakup`}
       </div>
     </div>
   );
